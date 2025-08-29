@@ -268,6 +268,9 @@
             margin-bottom: 16px;
             display: flex;
             flex-direction: column;
+        }
+
+        .message-wrapper.new-message {
             animation: slideIn 0.3s ease;
         }
 
@@ -509,6 +512,17 @@
             border: 2px dashed var(--border-color);
         }
 
+        .custom-code-input {
+            margin-top: 10px;
+        }
+
+        .custom-code-input input {
+            font-family: monospace;
+            font-size: 16px;
+            text-align: center;
+            letter-spacing: 2px;
+        }
+
         .error-message {
             background: #fef2f2;
             color: #dc2626;
@@ -616,6 +630,17 @@
                 </select>
             </div>
             
+            <div id="channelCodeDisplay" style="display: none;">
+                <label class="form-label">Channel Code</label>
+                <div class="form-group">
+                    <input type="text" id="customCodeInput" placeholder="Enter custom code (6 characters)..." maxlength="6" class="custom-code-input" />
+                    <div style="margin-top: 10px;">
+                        <button type="button" onclick="generateRandomCode()" style="font-size: 12px; padding: 8px 12px;">🎲 Generate Random</button>
+                    </div>
+                </div>
+                <div class="code-display" id="generatedCode"></div>
+            </div>
+            
             <div class="form-group">
                 <label class="form-label">Message Lifetime</label>
                 <select id="messageLifetimeSelect">
@@ -629,11 +654,6 @@
                     <option value="43200">12 hours</option>
                     <option value="86400">24 hours</option>
                 </select>
-            </div>
-            
-            <div id="channelCodeDisplay" style="display: none;">
-                <label class="form-label">Channel Code (share this with others)</label>
-                <div class="code-display" id="generatedCode"></div>
             </div>
             
             <button id="createChannelBtn" onclick="createChannel()">Create Channel</button>
@@ -721,6 +741,7 @@
         };
         let currentChannel = null;
         let messageInterval = null;
+        let lastMessageCount = 0;
 
         // Initialize app
         document.addEventListener('DOMContentLoaded', function() {
@@ -754,16 +775,29 @@
                 const codeDisplay = document.getElementById('channelCodeDisplay');
                 if (e.target.value === 'private') {
                     codeDisplay.style.display = 'block';
-                    document.getElementById('generatedCode').textContent = generateChannelCode();
+                    generateRandomCode();
                 } else {
                     codeDisplay.style.display = 'none';
                 }
+            });
+
+            // Custom code input handler
+            document.getElementById('customCodeInput').addEventListener('input', function(e) {
+                const value = e.target.value.toUpperCase();
+                e.target.value = value;
+                document.getElementById('generatedCode').textContent = value;
             });
         });
 
         // Utility functions
         function generateChannelCode() {
             return Math.random().toString(36).substr(2, 6).toUpperCase();
+        }
+
+        function generateRandomCode() {
+            const code = generateChannelCode();
+            document.getElementById('customCodeInput').value = code;
+            document.getElementById('generatedCode').textContent = code;
         }
 
         function formatTime(timestamp) {
@@ -901,6 +935,7 @@
             const name = document.getElementById('channelNameInput').value.trim();
             const type = document.getElementById('channelTypeSelect').value;
             const messageLifetime = parseInt(document.getElementById('messageLifetimeSelect').value);
+            const customCode = document.getElementById('customCodeInput').value.trim();
 
             if (!name) {
                 showError('createChannelError', 'Please enter a channel name');
@@ -909,6 +944,11 @@
 
             if (!currentUser.nickname) {
                 showError('createChannelError', 'Please set a nickname first');
+                return;
+            }
+
+            if (type === 'private' && (!customCode || customCode.length !== 6)) {
+                showError('createChannelError', 'Please enter a 6-character code for private channels');
                 return;
             }
 
@@ -922,7 +962,8 @@
                         name: name,
                         type: type,
                         messageLifetime: messageLifetime,
-                        userId: currentUser.id
+                        userId: currentUser.id,
+                        customCode: customCode
                     })
                 });
 
@@ -941,6 +982,7 @@
                 document.getElementById('channelTypeSelect').value = 'public';
                 document.getElementById('messageLifetimeSelect').value = '300';
                 document.getElementById('channelCodeDisplay').style.display = 'none';
+                document.getElementById('customCodeInput').value = '';
                 
                 // Reload channels
                 loadChannels();
@@ -1064,7 +1106,7 @@
                 });
                 
                 // Find and activate the channel item
-                const channelItems = document.querySelectorAll('.channel-item');
+                const channelItems = document.querySelectorAll('.channelItem');
                 for (let item of channelItems) {
                     if (item.onclick && item.onclick.toString().includes(privateChannel.id)) {
                         item.classList.add('active');
@@ -1099,35 +1141,47 @@
                 const messages = await response.json();
 
                 const chatMessages = document.getElementById('chatMessages');
-                chatMessages.innerHTML = '';
+                
+                // Only reload if message count changed
+                if (messages.length !== lastMessageCount) {
+                    chatMessages.innerHTML = '';
 
-                if (messages.length === 0) {
-                    chatMessages.innerHTML = `
-                        <div style="text-align: center; color: var(--text-secondary); margin-top: 50px;">
-                            <h3>No messages yet</h3>
-                            <p>Be the first to send a message in this channel!</p>
-                        </div>
-                    `;
-                    return;
+                    if (messages.length === 0) {
+                        chatMessages.innerHTML = `
+                            <div style="text-align: center; color: var(--text-secondary); margin-top: 50px;">
+                                <h3>No messages yet</h3>
+                                <p>Be the first to send a message in this channel!</p>
+                            </div>
+                        `;
+                        lastMessageCount = 0;
+                        return;
+                    }
+
+                    messages.forEach((message, index) => {
+                        const messageWrapper = document.createElement('div');
+                        messageWrapper.className = `message-wrapper ${message.userId === currentUser.id ? 'self' : 'other'}`;
+                        
+                        // Only animate new messages (not on initial load)
+                        if (index === messages.length - 1 && messages.length > lastMessageCount) {
+                            messageWrapper.classList.add('new-message');
+                        }
+                        
+                        messageWrapper.innerHTML = `
+                            <div class="nickname">${message.nickname}</div>
+                            <div class="bubble ${message.userId === currentUser.id ? 'self' : 'other'}">
+                                ${message.text}
+                                <div class="timestamp">${formatTime(message.timestamp)}</div>
+                            </div>
+                        `;
+                        
+                        chatMessages.appendChild(messageWrapper);
+                    });
+
+                    lastMessageCount = messages.length;
+                    
+                    // Scroll to bottom
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
                 }
-
-                messages.forEach(message => {
-                    const messageWrapper = document.createElement('div');
-                    messageWrapper.className = `message-wrapper ${message.userId === currentUser.id ? 'self' : 'other'}`;
-                    
-                    messageWrapper.innerHTML = `
-                        <div class="nickname">${message.nickname}</div>
-                        <div class="bubble ${message.userId === currentUser.id ? 'self' : 'other'}">
-                            ${message.text}
-                            <div class="timestamp">${formatTime(message.timestamp)}</div>
-                        </div>
-                    `;
-                    
-                    chatMessages.appendChild(messageWrapper);
-                });
-
-                // Scroll to bottom
-                chatMessages.scrollTop = chatMessages.scrollHeight;
 
             } catch (error) {
                 console.error('Error loading messages:', error);
