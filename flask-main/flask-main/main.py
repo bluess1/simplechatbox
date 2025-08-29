@@ -20,7 +20,28 @@ def normalize(text):
     text = re.sub(r'\s+', '', text)
     return text
 
-banned_words = ["bomb", "shoot", "kill", "hate", "terrorist", "violence"]
+banned_words = [
+    # Violence/Weapons
+    "bomb", "shoot", "kill", "murder", "terrorist", "violence", "gun", "knife", "weapon", "attack", "assault",
+    
+    # Hate Speech & Slurs
+    "hate", "nazi", "hitler", "racist", "sexist", "homophobe", "bigot", "retard", "fag", "faggot",
+    
+    # Sexual/Adult Content
+    "porn", "sex", "nude", "naked", "horny", "sexy", "dick", "penis", "vagina", "boobs", "ass",
+    
+    # Drugs
+    "cocaine", "heroin", "meth", "drugs", "weed", "marijuana", "crack", "ecstasy", "lsd",
+    
+    # Spam/Scam
+    "spam", "scam", "hack", "cheat", "exploit", "bot", "fake", "phishing",
+    
+    # General Toxicity
+    "stupid", "idiot", "moron", "loser", "noob", "trash", "garbage", "worthless", "pathetic",
+    
+    # Common Profanity
+    "fuck", "shit", "damn", "hell", "bitch", "bastard", "crap", "piss", "whore", "slut"
+]
 
 def contains_banned_content(text):
     if not text:
