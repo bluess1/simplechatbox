@@ -1,38 +1,123 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Simple Chat</title>
+    <meta charset="UTF-8">
+    <title>Live Chat</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f2f2f2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .chat-container {
+            width: 400px;
+            max-width: 90%;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: #4a90e2;
+            color: white;
+            padding: 12px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 12px;
+            overflow-y: auto;
+            border-top: 1px solid #eee;
+            border-bottom: 1px solid #eee;
+        }
+
+        .chat-input {
+            display: flex;
+            padding: 10px;
+            background: #fafafa;
+        }
+
+        .chat-input input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            outline: none;
+            font-size: 14px;
+        }
+
+        .chat-input button {
+            margin-left: 8px;
+            padding: 10px 16px;
+            background: #4a90e2;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .chat-input button:hover {
+            background: #357abd;
+        }
+    </style>
 </head>
 <body>
-    <h2>Group Chat</h2>
-    <div id="chat" style="border:1px solid #000; height:300px; width:400px; overflow:auto;"></div>
-    <input id="msg" placeholder="Type message">
-    <button onclick="sendMessage()">Send</button>
+    <div class="chat-container">
+        <div class="chat-header">💬 Live Chat</div>
+        <div id="messages" class="chat-messages"></div>
+        <div class="chat-input">
+            <input type="text" id="message" placeholder="Type a message..." />
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
 
     <script>
         async function loadMessages() {
             let res = await fetch("/messages");
-            let messages = await res.json();
-            let chat = document.getElementById("chat");
-            chat.innerHTML = "";
-            messages.forEach(m => {
+            let data = await res.json();
+            let messagesDiv = document.getElementById("messages");
+            messagesDiv.innerHTML = "";
+            data.forEach(msg => {
                 let p = document.createElement("p");
-                p.textContent = m;
-                chat.appendChild(p);
+                p.textContent = msg.text;
+                messagesDiv.appendChild(p);
             });
-            chat.scrollTop = chat.scrollHeight;
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
 
         async function sendMessage() {
-            let msg = document.getElementById("msg").value;
-            if(msg.trim() !== ""){
-                await fetch("/send?msg=" + encodeURIComponent(msg));
-                document.getElementById("msg").value = "";
-                loadMessages();
-            }
+            let input = document.getElementById("message");
+            let text = input.value.trim();
+            if (text === "") return;
+            await fetch("/send", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({text})
+            });
+            input.value = "";
+            loadMessages();
         }
 
-        setInterval(loadMessages, 2000); // refresh every 2s
+        // Press Enter to send
+        document.getElementById("message").addEventListener("keypress", function(e) {
+            if (e.key === "Enter") {
+                sendMessage();
+            }
+        });
+
+        setInterval(loadMessages, 2000); // Refresh every 2s
         loadMessages();
     </script>
 </body>
