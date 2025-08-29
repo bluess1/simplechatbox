@@ -37,7 +37,7 @@ def normalize(text):
     return text
 
 banned_words = [
- "bomb", "shooter", "kill", "nigger", "fck", "violence", "gun", "knife", "weapon", "niggar", "nigglet",
+   "bomb", "shooter", "kill", "nigger", "fck", "violence", "gun", "knife", "weapon", "niggar", "nigglet",
     "345fdgfdg", "nazi", "hitler", "345fdgfdg", "sexist", "nga", "n g a", "345fdgfdg", "345fdgfdg", "nigge",
     "porn", "sex", "nude", "naked", "horny", "sexy", "dick", "penis", "vagina", "boobs", "345fdgfdg",
     "345fdgfdg", "heroin", "345fdgfdg", "345fdgfdg", "345fdgfdg", "marijuana", "crack", "ecstasy", "lsd",
@@ -89,6 +89,10 @@ def cleanup_messages():
 @app.route("/")
 def index():
     return render_template("chat.html")
+
+@app.route("/admin")
+def admin():
+    return render_template("admin.html")
 
 @app.route("/set_nickname", methods=["POST"])
 def set_nickname():
@@ -372,9 +376,160 @@ def get_channel_info(channel_id):
         "is_system": channel.get("is_system", False)
     })
 
+# ===== ADMIN ENDPOINTS =====
+
+@app.route("/admin/users")
+def get_users():
+    cleanup_messages()
+    user_list = []
+    for user_id, user_data in nicknames.items():
+        user_list.append({
+            "userId": user_id,
+            "nickname": user_data["nickname"],
+            "time": user_data["time"]
+        })
+    return jsonify(user_list)
+
+@app.route("/admin/delete_channel", methods=["POST"])
+def admin_delete_channel():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+            
+        channel_id = data.get("channelId", "").strip()
+        admin_password = data.get("adminPassword", "").strip()
+        
+        if not channel_id or not admin_password:
+            return jsonify({"error": "Channel ID and admin password are required"}), 400
+        
+        if admin_password != "admin123":  # Change this to your desired password
+            return jsonify({"error": "Invalid admin password"}), 403
+        
+        if channel_id == "main":
+            return jsonify({"error": "Cannot delete the main channel"}), 403
+        
+        cleanup_messages()
+        
+        if channel_id not in channels:
+            return jsonify({"error": "Channel not found"}), 404
+        
+        # Delete the channel
+        del channels[channel_id]
+        
+        return jsonify({"success": True, "message": "Channel deleted successfully"})
+        
+    except Exception as e:
+        print(f"Error in admin_delete_channel: {str(e)}")
+        return jsonify({"error": "Server error"}), 500
+
+@app.route("/admin/clear_channel", methods=["POST"])
+def admin_clear_channel():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+            
+        channel_id = data.get("channelId", "").strip()
+        admin_password = data.get("adminPassword", "").strip()
+        
+        if not channel_id or not admin_password:
+            return jsonify({"error": "Channel ID and admin password are required"}), 400
+        
+        if admin_password != "admin123":  # Change this to your desired password
+            return jsonify({"error": "Invalid admin password"}), 403
+        
+        cleanup_messages()
+        
+        if channel_id not in channels:
+            return jsonify({"error": "Channel not found"}), 404
+        
+        # Clear all messages from the channel
+        channels[channel_id]["messages"] = []
+        
+        return jsonify({"success": True, "message": "Channel cleared successfully"})
+        
+    except Exception as e:
+        print(f"Error in admin_clear_channel: {str(e)}")
+        return jsonify({"error": "Server error"}), 500
+
+@app.route("/admin/delete_message", methods=["POST"])
+def admin_delete_message():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+            
+        channel_id = data.get("channelId", "").strip()
+        timestamp = data.get("timestamp", "").strip()
+        admin_password = data.get("adminPassword", "").strip()
+        
+        if not channel_id or not timestamp or not admin_password:
+            return jsonify({"error": "Channel ID, timestamp, and admin password are required"}), 400
+        
+        if admin_password != "admin123":  # Change this to your desired password
+            return jsonify({"error": "Invalid admin password"}), 403
+        
+        cleanup_messages()
+        
+        if channel_id not in channels:
+            return jsonify({"error": "Channel not found"}), 404
+        
+        # Find and remove the message
+        channel = channels[channel_id]
+        original_count = len(channel["messages"])
+        channel["messages"] = [m for m in channel["messages"] if m["time"] != float(timestamp)]
+        
+        if len(channel["messages"]) == original_count:
+            return jsonify({"error": "Message not found"}), 404
+        
+        return jsonify({"success": True, "message": "Message deleted successfully"})
+        
+    except Exception as e:
+        print(f"Error in admin_delete_message: {str(e)}")
+        return jsonify({"error": "Server error"}), 500
+
+@app.route("/admin/ban_user", methods=["POST"])
+def admin_ban_user():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+            
+        user_id = data.get("userId", "").strip()
+        admin_password = data.get("adminPassword", "").strip()
+        
+        if not user_id or not admin_password:
+            return jsonify({"error": "User ID and admin password are required"}), 400
+        
+        if admin_password != "admin123":  # Change this to your desired password
+            return jsonify({"error": "Invalid admin password"}), 403
+        
+        # Remove user from nicknames (effectively banning them)
+        if user_id in nicknames:
+            del nicknames[user_id]
+        
+        # Remove user from all channel members
+        for channel in channels.values():
+            if "members" in channel and user_id in channel["members"]:
+                channel["members"].remove(user_id)
+        
+        return jsonify({"success": True, "message": "User banned successfully"})
+        
+    except Exception as e:
+        print(f"Error in admin_ban_user: {str(e)}")
+        return jsonify({"error": "Server error"}), 500
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
+
+
+
+
+
+
 
 
 
