@@ -37,10 +37,10 @@ banned_words = [
     "spam", "scam", "hack", "cheat", "exploit", "bot", "fake", "phishing",
     
     # General Toxicity
-    "stupid", "idiot", "moron", "loser", "noob", "trash", "garbage", "worthless", "pathetic",
+    "nigger", "nga", "n g a", "niggar", "nigga", "nigge", "nigglet"
     
     # Common Profanity
-    "fuck", "shit", "damn", "hell", "bitch", "bastard", "crap", "piss", "whore", "slut"
+    "fuck", "hell", "328947yusdftdf", "bastard", "crap", "piss", "45dfgszerwtsgdf", "slut"
 ]
 
 def contains_banned_content(text):
@@ -133,3 +133,39 @@ def send_message():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+banned_words = [
+    # Violence/Weapons
+    "bomb", "shoot", "kill", "murder", "terrorist", "violence", "gun", "knife", "weapon", "attack", "assault",
+    
+    # Hate Speech & Slurs
+    "hate", "nazi", "hitler", "racist", "sexist", "homophobe", "bigot", "retard", "fag", "faggot",
+    
+    # Sexual/Adult Content
+    "porn", "sex", "nude", "naked", "horny", "sexy", "dick", "penis", "vagina", "boobs", "ass",
+    
+    # Drugs
+    "cocaine", "heroin", "meth", "drugs", "weed", "marijuana", "crack", "ecstasy", "lsd",
+    
+    # Spam/Scam
+    "spam", "scam", "hack", "cheat", "exploit", "bot", "fake", "phishing",
+    
+    # General Toxicity
+    "nigger", "nga", "n g a", "niggar", "nigga", "nigge", "nigglet"
+    
+    # Common Profanity
+    "fuck", "hell", "328947yusdftdf", "bastard", "crap", "piss", "45dfgszerwtsgdf", "slut"
+]
