@@ -1,33 +1,36 @@
 from flask import Flask, render_template, request, jsonify
-import time, os
+import re
 
 app = Flask(__name__)
 
 messages = []
-MAX_AGE = 1200  #time before msg is deleted
 
-def cleanup():
-    now = time.time()
-    global messages
-    messages = [m for m in messages if now - m["time"] < MAX_AGE]
+# Normalize text for filtering (remove symbols, numbers used as letters)
+def normalize(text):
+    return re.sub(r'[^a-z]', '', text.lower())
 
-@app.route('/')
+banned_words = ["nigger", "nigga", "nga", "bomb", "shoot"]
+
+def contains_banned_word(text):
+    norm = normalize(text)
+    for bad in banned_words:
+        if bad in norm:
+            return True
+    return False
+
+@app.route("/")
 def index():
     return render_template("chat.html")
 
-@app.route('/send')
-def send():
-    msg = request.args.get("msg", "")
-    if msg:
-        cleanup()
-        messages.append({"text": msg, "time": time.time()})
-    return ("", 204)
-
-@app.route('/messages')
+@app.route("/messages")
 def get_messages():
-    cleanup()
-    return jsonify([m["text"] for m in messages])
+    return jsonify(messages)
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))  # port for railway
-    app.run(host="0.0.0.0", port=port)
+@app.route("/send", methods=["POST"])
+def send_message():
+    data = request.get_json()
+    text = data.get("text", "").strip()
+    if contains_banned_word(text):
+        return jsonify({"error": "Message contains banned words"}), 400
+    messages.append({"text": text})
+    return jsonify({"success": True})
