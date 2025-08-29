@@ -1,14 +1,12 @@
 from flask import Flask, render_template, request, jsonify
-import time
+import time, os
 
 app = Flask(__name__)
 
-# store messages as { "text": ..., "time": ... }
 messages = []
-MAX_AGE = 10  # 5 minutes in seconds
+MAX_AGE = 10  #time before msg is deleted
 
 def cleanup():
-    """Remove messages older than MAX_AGE seconds"""
     now = time.time()
     global messages
     messages = [m for m in messages if now - m["time"] < MAX_AGE]
@@ -28,5 +26,8 @@ def send():
 @app.route('/messages')
 def get_messages():
     cleanup()
-    # return just the text values
     return jsonify([m["text"] for m in messages])
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))  # port for railway
+    app.run(host="0.0.0.0", port=port)
