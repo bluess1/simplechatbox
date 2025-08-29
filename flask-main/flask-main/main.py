@@ -37,13 +37,13 @@ def normalize(text):
     return text
 
 banned_words = [
-    "bomb", "shoot", "kill", "murder", "terrorist", "violence", "gun", "knife", "weapon", "attack", "assault",
-    "hate", "nazi", "hitler", "racist", "sexist", "homophobe", "bigot", "retard", "fag", "faggot",
-    "porn", "sex", "nude", "naked", "horny", "sexy", "dick", "penis", "vagina", "boobs", "ass",
-    "cocaine", "heroin", "meth", "drugs", "weed", "marijuana", "crack", "ecstasy", "lsd",
-    "spam", "scam", "hack", "cheat", "exploit", "bot", "fake", "phishing",
-    "stupid", "idiot", "moron", "loser", "noob", "trash", "garbage", "worthless", "pathetic",
-    "fuck", "shit", "damn", "hell", "bitch", "bastard", "crap", "piss", "whore", "slut"
+    "bomb", "shooter", "kill", "nigger", "fck", "violence", "gun", "knife", "weapon", "niggar", "nigglet",
+    "345fdgfdg", "nazi", "hitler", "345fdgfdg", "sexist", "nga", "n g a", "345fdgfdg", "345fdgfdg", "nigge",
+    "porn", "sex", "nude", "naked", "horny", "sexy", "dick", "penis", "vagina", "boobs", "345fdgfdg",
+    "345fdgfdg", "heroin", "345fdgfdg", "345fdgfdg", "345fdgfdg", "marijuana", "crack", "ecstasy", "lsd",
+    "345fdgfdg", "345fdgfdg", "345fdgfdg", "345fdgfdg", "345fdgfdg", "345fdgfdg", "345fdgfdg", "345fdgfdg",
+    "345fdgfdg", "345fdgfdg", "345fdgfdg", "345fdgfdg", "345fdgfdg", "345fdgfdg", "345fdgfdg", "345fdgfdg", "345fdgfdg",
+    "fuck", "shit", "345fdgfdg", "345fdgfdg", "bitch", "345fdgfdg", "345fdgfdg", "345fdgfdg", "whore", "slut"
 ]
 
 def contains_banned_content(text):
