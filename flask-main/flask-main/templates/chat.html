@@ -115,6 +115,32 @@
             overflow-y: auto;
         }
 
+        /* Search Bar */
+        .search-container {
+            margin-bottom: 20px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .search-input::placeholder {
+            color: var(--text-secondary);
+        }
+
         .channel-section {
             margin-bottom: 25px;
         }
@@ -148,6 +174,10 @@
             color: white;
         }
 
+        .channel-item.hidden {
+            display: none;
+        }
+
         .channel-info {
             display: flex;
             flex-direction: column;
@@ -174,6 +204,22 @@
 
         .channel-badge.private {
             background: var(--danger-color);
+        }
+
+        .delete-channel-btn {
+            background: var(--danger-color);
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            transition: all 0.2s ease;
+        }
+
+        .delete-channel-btn:hover {
+            background: #dc2626;
+            transform: scale(1.1);
         }
 
         .action-buttons {
@@ -688,6 +734,11 @@
             </div>
             
             <div class="sidebar-content">
+                <!-- Search Bar -->
+                <div class="search-container">
+                    <input type="text" id="channelSearch" class="search-input" placeholder="🔍 Search channels..." />
+                </div>
+                
                 <div class="channel-section">
                     <div class="section-title">Channels</div>
                     <div id="channelList">
@@ -742,6 +793,7 @@
         let currentChannel = null;
         let messageInterval = null;
         let lastMessageCount = 0;
+        let allChannels = []; // Store all channels for search functionality
 
         // Initialize app
         document.addEventListener('DOMContentLoaded', function() {
@@ -753,6 +805,11 @@
                 if (e.key === 'Enter') {
                     sendMessage();
                 }
+            });
+
+            // Search functionality
+            document.getElementById('channelSearch').addEventListener('input', function(e) {
+                filterChannels(e.target.value);
             });
 
             // Character counters
@@ -821,6 +878,23 @@
             setTimeout(() => {
                 element.style.display = 'none';
             }, 3000);
+        }
+
+        // Search functionality
+        function filterChannels(searchTerm) {
+            const channelItems = document.querySelectorAll('.channel-item');
+            const searchLower = searchTerm.toLowerCase();
+            
+            channelItems.forEach(item => {
+                const channelName = item.querySelector('.channel-name').textContent.toLowerCase();
+                const channelMeta = item.querySelector('.channel-meta').textContent.toLowerCase();
+                
+                if (channelName.includes(searchLower) || channelMeta.includes(searchLower)) {
+                    item.classList.remove('hidden');
+                } else {
+                    item.classList.add('hidden');
+                }
+            });
         }
 
         // Modal functions
@@ -894,248 +968,255 @@
         }
 
         // Channel functions
-        <!-- ... existing code until loadChannels function ... -->
+        async function loadChannels() {
+            try {
+                const response = await fetch('/channels');
+                allChannels = await response.json();
 
-async function loadChannels() {
-    try {
-        const response = await fetch('/channels');
-        const channels = await response.json();
+                const channelList = document.getElementById('channelList');
+                channelList.innerHTML = '';
 
-        const channelList = document.getElementById('channelList');
-        channelList.innerHTML = '';
+                allChannels.forEach(channel => {
+                    const channelItem = document.createElement('div');
+                    channelItem.className = `channel-item ${currentChannel === channel.id ? 'active' : ''}`;
+                    channelItem.onclick = () => joinChannel(channel.id);
 
-        channels.forEach(channel => {
-            const channelItem = document.createElement('div');
-            channelItem.className = `channel-item ${currentChannel === channel.id ? 'active' : ''}`;
-            channelItem.onclick = () => joinChannel(channel.id);
+                    // Add delete button for non-system channels
+                    const deleteButton = !channel.is_system ? 
+                        `<button class="delete-channel-btn" onclick="deleteChannel('${channel.id}', event)">��️</button>` : '';
 
-            // Add delete button for non-system channels
-            const deleteButton = !channel.is_system ? 
-                `<button class="delete-channel-btn" onclick="deleteChannel('${channel.id}', event)">��️</button>` : '';
+                    channelItem.innerHTML = `
+                        <div class="channel-info">
+                            <div class="channel-name">${channel.name}</div>
+                            <div class="channel-meta">${channel.message_count} messages</div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div class="channel-badge ${channel.type}">${channel.type === 'private' ? '🔒' : '🌍'}</div>
+                            ${deleteButton}
+                        </div>
+                    `;
 
-            channelItem.innerHTML = `
-                <div class="channel-info">
-                    <div class="channel-name">${channel.name}</div>
-                    <div class="channel-meta">${channel.message_count} messages</div>
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <div class="channel-badge ${channel.type}">${channel.type === 'private' ? '🔒' : '🌍'}</div>
-                    ${deleteButton}
-                </div>
-            `;
+                    channelList.appendChild(channelItem);
+                });
 
-            channelList.appendChild(channelItem);
-        });
+                // Auto-select main channel if no channel is selected
+                if (!currentChannel && allChannels.length > 0) {
+                    const mainChannel = allChannels.find(c => c.id === 'main');
+                    if (mainChannel) {
+                        joinChannel('main');
+                    }
+                }
 
-        // Auto-select main channel if no channel is selected
-        if (!currentChannel && channels.length > 0) {
-            const mainChannel = channels.find(c => c.id === 'main');
-            if (mainChannel) {
-                joinChannel('main');
+            } catch (error) {
+                console.error('Error loading channels:', error);
             }
         }
 
-    } catch (error) {
-        console.error('Error loading channels:', error);
-    }
-}
+        async function createChannel() {
+            const name = document.getElementById('channelNameInput').value.trim();
+            const type = document.getElementById('channelTypeSelect').value;
+            const messageLifetime = parseInt(document.getElementById('messageLifetimeSelect').value);
+            const customCode = document.getElementById('customCodeInput').value.trim();
 
-// ... existing code until joinChannel function ...
+            if (!name) {
+                showError('createChannelError', 'Please enter a channel name');
+                return;
+            }
 
-async function joinChannel(channelId) {
-    try {
-        const response = await fetch('/join_channel', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                channelId: channelId,
-                code: '',
-                userId: currentUser.id
-            })
-        });
+            if (!currentUser.nickname) {
+                showError('createChannelError', 'Please set a nickname first');
+                return;
+            }
 
-        const data = await response.json();
+            if (type === 'private' && (!customCode || customCode.length !== 6)) {
+                showError('createChannelError', 'Please enter a 6-character code for private channels');
+                return;
+            }
 
-        if (data.error) {
-            showError('joinChannelError', data.error);
-            return;
-        }
+            try {
+                const response = await fetch('/create_channel', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        name: name,
+                        type: type,
+                        messageLifetime: messageLifetime,
+                        userId: currentUser.id,
+                        customCode: customCode
+                    })
+                });
 
-        currentChannel = channelId;
-        document.getElementById('chatTitle').textContent = data.channel.name;
-        document.getElementById('chatMeta').textContent = `Channel type: ${data.channel.type}`;
-        
-        // Update sidebar active state
-        document.querySelectorAll('.channel-item').forEach(item => {
-            item.classList.remove('active');
-        });
-        
-        // Find and activate the clicked channel item
-        const channelItems = document.querySelectorAll('.channel-item');
-        for (let item of channelItems) {
-            if (item.onclick && item.onclick.toString().includes(channelId)) {
-                item.classList.add('active');
-                break;
+                const data = await response.json();
+
+                if (data.error) {
+                    showError('createChannelError', data.error);
+                    return;
+                }
+
+                showSuccess('createChannelSuccess', 'Channel created successfully!');
+                closeModal('createChannelModal');
+                
+                // Clear form
+                document.getElementById('channelNameInput').value = '';
+                document.getElementById('channelTypeSelect').value = 'public';
+                document.getElementById('messageLifetimeSelect').value = '300';
+                document.getElementById('channelCodeDisplay').style.display = 'none';
+                document.getElementById('customCodeInput').value = '';
+                
+                // Reload channels
+                loadChannels();
+
+            } catch (error) {
+                console.error('Error creating channel:', error);
+                showError('createChannelError', 'Failed to create channel. Please try again.');
             }
         }
-        
-        // Enable message input if user has nickname
-        if (currentUser.nickname) {
-            document.getElementById('messageInput').disabled = false;
-            document.getElementById('sendBtn').disabled = false;
-        }
-        
-        // Load messages immediately
-        loadMessages(channelId);
-        
-        // Start message polling
-        startMessagePolling(channelId);
 
-    } catch (error) {
-        console.error('Error joining channel:', error);
-        showError('joinChannelError', 'Failed to join channel. Please try again.');
-    }
-}
+        async function joinChannel(channelId) {
+            try {
+                const response = await fetch('/join_channel', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        channelId: channelId,
+                        code: '',
+                        userId: currentUser.id
+                    })
+                });
 
-// ... existing code until joinPrivateChannel function ...
+                const data = await response.json();
 
-async function joinPrivateChannel() {
-    const code = document.getElementById('channelCodeInput').value.trim();
-    
-    if (!code) {
-        showError('joinChannelError', 'Please enter a channel code');
-        return;
-    }
+                if (data.error) {
+                    showError('joinChannelError', data.error);
+                    return;
+                }
 
-    try {
-        // Find channel by code
-        const response = await fetch('/channels');
-        const channels = await response.json();
-        
-        // Look for private channel with matching code
-        let privateChannel = null;
-        for (let channel of channels) {
-            if (channel.type === 'private' && channel.code === code.toUpperCase()) {
-                privateChannel = channel;
-                break;
+                currentChannel = channelId;
+                document.getElementById('chatTitle').textContent = data.channel.name;
+                document.getElementById('chatMeta').textContent = `Channel type: ${data.channel.type}`;
+                
+                // Update sidebar active state
+                document.querySelectorAll('.channel-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                
+                // Find and activate the clicked channel item
+                const channelItems = document.querySelectorAll('.channel-item');
+                for (let item of channelItems) {
+                    if (item.onclick && item.onclick.toString().includes(channelId)) {
+                        item.classList.add('active');
+                        break;
+                    }
+                }
+                
+                // Enable message input if user has nickname
+                if (currentUser.nickname) {
+                    document.getElementById('messageInput').disabled = false;
+                    document.getElementById('sendBtn').disabled = false;
+                }
+                
+                // Load messages immediately
+                loadMessages(channelId);
+                
+                // Start message polling
+                startMessagePolling(channelId);
+
+            } catch (error) {
+                console.error('Error joining channel:', error);
+                showError('joinChannelError', 'Failed to join channel. Please try again.');
             }
         }
-        
-        if (!privateChannel) {
-            showError('joinChannelError', 'Invalid channel code or channel not found');
-            return;
-        }
 
-        // Join the channel using the join_channel endpoint
-        const joinResponse = await fetch('/join_channel', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                channelId: privateChannel.id,
-                code: code.toUpperCase(),
-                userId: currentUser.id
-            })
-        });
+        async function joinPrivateChannel() {
+            const code = document.getElementById('channelCodeInput').value.trim();
+            
+            if (!code) {
+                showError('joinChannelError', 'Please enter a channel code');
+                return;
+            }
 
-        const joinData = await joinResponse.json();
+            try {
+                // Find channel by code
+                const response = await fetch('/channels');
+                const channels = await response.json();
+                
+                // Look for private channel with matching code
+                let privateChannel = null;
+                for (let channel of channels) {
+                    if (channel.type === 'private' && channel.code === code.toUpperCase()) {
+                        privateChannel = channel;
+                        break;
+                    }
+                }
+                
+                if (!privateChannel) {
+                    showError('joinChannelError', 'Invalid channel code or channel not found');
+                    return;
+                }
 
-        if (joinData.error) {
-            showError('joinChannelError', joinData.error);
-            return;
-        }
+                // Join the channel using the join_channel endpoint
+                const joinResponse = await fetch('/join_channel', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        channelId: privateChannel.id,
+                        code: code.toUpperCase(),
+                        userId: currentUser.id
+                    })
+                });
 
-        // Successfully joined, now switch to the channel
-        currentChannel = privateChannel.id;
-        document.getElementById('chatTitle').textContent = privateChannel.name;
-        document.getElementById('chatMeta').textContent = `Channel type: ${privateChannel.type}`;
-        
-        // Update sidebar active state
-        document.querySelectorAll('.channel-item').forEach(item => {
-            item.classList.remove('active');
-        });
-        
-        // Find and activate the channel item
-        const channelItems = document.querySelectorAll('.channel-item');
-        for (let item of channelItems) {
-            if (item.onclick && item.onclick.toString().includes(privateChannel.id)) {
-                item.classList.add('active');
-                break;
+                const joinData = await joinResponse.json();
+
+                if (joinData.error) {
+                    showError('joinChannelError', joinData.error);
+                    return;
+                }
+
+                // Successfully joined, now switch to the channel
+                currentChannel = privateChannel.id;
+                document.getElementById('chatTitle').textContent = privateChannel.name;
+                document.getElementById('chatMeta').textContent = `Channel type: ${privateChannel.type}`;
+                
+                // Update sidebar active state
+                document.querySelectorAll('.channel-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                
+                // Find and activate the channel item
+                const channelItems = document.querySelectorAll('.channel-item');
+                for (let item of channelItems) {
+                    if (item.onclick && item.onclick.toString().includes(privateChannel.id)) {
+                        item.classList.add('active');
+                        break;
+                    }
+                }
+                
+                // Enable message input if user has nickname
+                if (currentUser.nickname) {
+                    document.getElementById('messageInput').disabled = false;
+                    document.getElementById('sendBtn').disabled = false;
+                }
+                
+                // Load messages immediately
+                loadMessages(privateChannel.id);
+                
+                // Start message polling
+                startMessagePolling(privateChannel.id);
+                
+                closeModal('joinChannelModal');
+                document.getElementById('channelCodeInput').value = '';
+
+            } catch (error) {
+                console.error('Error joining private channel:', error);
+                showError('joinChannelError', 'Failed to join private channel. Please try again.');
             }
         }
-        
-        // Enable message input if user has nickname
-        if (currentUser.nickname) {
-            document.getElementById('messageInput').disabled = false;
-            document.getElementById('sendBtn').disabled = false;
-        }
-        
-        // Load messages immediately
-        loadMessages(privateChannel.id);
-        
-        // Start message polling
-        startMessagePolling(privateChannel.id);
-        
-        closeModal('joinChannelModal');
-        document.getElementById('channelCodeInput').value = '';
-
-    } catch (error) {
-        console.error('Error joining private channel:', error);
-        showError('joinChannelError', 'Failed to join private channel. Please try again.');
-    }
-}
-
-// Add delete channel function
-async function deleteChannel(channelId, event) {
-    event.stopPropagation(); // Prevent channel selection
-    
-    if (!confirm('Are you sure you want to delete this channel? This action cannot be undone.')) {
-        return;
-    }
-    
-    try {
-        const response = await fetch('/delete_channel', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                channelId: channelId,
-                userId: currentUser.id
-            })
-        });
-
-        const data = await response.json();
-
-        if (data.error) {
-            showError('nicknameError', data.error);
-            return;
-        }
-
-        // If we were in the deleted channel, switch to main
-        if (currentChannel === channelId) {
-            currentChannel = 'main';
-            document.getElementById('chatTitle').textContent = 'Main Chat';
-            document.getElementById('chatMeta').textContent = 'Channel type: public';
-            loadMessages('main');
-            startMessagePolling('main');
-        }
-        
-        // Reload channels to update the list
-        loadChannels();
-        
-        showSuccess('nicknameError', 'Channel deleted successfully!');
-
-    } catch (error) {
-        console.error('Error deleting channel:', error);
-        showError('nicknameError', 'Failed to delete channel. Please try again.');
-    }
-}
-
-// ... rest of existing code ...
 
         async function loadMessages(channelId) {
             try {
@@ -1174,7 +1255,7 @@ async function deleteChannel(channelId, event) {
                                 ${message.text}
                                 <div class="timestamp">${formatTime(message.timestamp)}</div>
                             </div>
-                    `;
+                        `;
                         
                         chatMessages.appendChild(messageWrapper);
                     });
@@ -1250,7 +1331,52 @@ async function deleteChannel(channelId, event) {
                 showError('nicknameError', 'Failed to send message. Please try again.');
             }
         }
+
+        async function deleteChannel(channelId, event) {
+            event.stopPropagation(); // Prevent channel selection
+            
+            if (!confirm('Are you sure you want to delete this channel? This action cannot be undone.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/delete_channel', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        channelId: channelId,
+                        userId: currentUser.id
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    showError('nicknameError', data.error);
+                    return;
+                }
+
+                // If we were in the deleted channel, switch to main
+                if (currentChannel === channelId) {
+                    currentChannel = 'main';
+                    document.getElementById('chatTitle').textContent = 'Main Chat';
+                    document.getElementById('chatMeta').textContent = 'Channel type: public';
+                    loadMessages('main');
+                    startMessagePolling('main');
+                }
+                
+                // Reload channels to update the list
+                loadChannels();
+                
+                showSuccess('nicknameError', 'Channel deleted successfully!');
+
+            } catch (error) {
+                console.error('Error deleting channel:', error);
+                showError('nicknameError', 'Failed to delete channel. Please try again.');
+            }
+        }
     </script>
 </body>
 </html>
-
