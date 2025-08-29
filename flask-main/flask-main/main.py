@@ -120,12 +120,11 @@ def get_channels():
             "id": channel_id,
             "name": channel["name"],
             "type": channel["type"],
+            "code": channel.get("code"),
             "message_count": len(channel["messages"]),
             "last_activity": channel["last_activity"]
         })
     return jsonify(channel_list)
-
-# ... existing code ...
 
 @app.route("/create_channel", methods=["POST"])
 def create_channel():
@@ -192,8 +191,6 @@ def create_channel():
         print(f"Error in create_channel: {str(e)}")
         return jsonify({"error": "Server error"}), 500
 
-# ... existing code ...
-
 @app.route("/join_channel", methods=["POST"])
 def join_channel():
     try:
@@ -214,8 +211,12 @@ def join_channel():
         
         channel = channels[channel_id]
         
-        if channel["type"] == "private" and channel["code"] != code:
-            return jsonify({"error": "Invalid channel code"}), 403
+        # Check if private channel requires code
+        if channel["type"] == "private":
+            if not code:
+                return jsonify({"error": "Private channel requires a code to join"}), 403
+            if channel["code"] != code.upper():
+                return jsonify({"error": "Invalid channel code"}), 403
         
         return jsonify({
             "success": True,
@@ -274,14 +275,17 @@ def send_message():
         nicknames[user_id] = {"nickname": nickname, "time": time.time()}
         channels[channel_id]["last_activity"] = time.time()
         
-        channels[channel_id]["messages"].append({
+        # Add message to channel
+        message = {
             "text": text, 
             "nickname": nickname,
             "userId": user_id,
             "time": time.time()
-        })
+        }
         
-        return jsonify({"success": True})
+        channels[channel_id]["messages"].append(message)
+        
+        return jsonify({"success": True, "message": message})
         
     except Exception as e:
         print(f"Error in send_message: {str(e)}")
@@ -291,7 +295,7 @@ def send_message():
 def get_channel_info(channel_id):
     cleanup_messages()
     
-    if channel_id not in channels:
+    if channel_id not in channels_id:
         return jsonify({"error": "Channel not found"}), 404
     
     channel = channels[channel_id]
