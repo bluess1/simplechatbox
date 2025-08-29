@@ -113,7 +113,7 @@
             cursor: not-allowed;
         }
 
-        /* Nickname Modal Styles */
+        /* Nickname Modal */
         .modal {
             display: none;
             position: fixed;
@@ -193,13 +193,14 @@
     <div id="nicknameModal" class="modal">
         <div class="modal-content">
             <h2>Welcome to Live Chat!</h2>
-            <p>Please enter a nickname to continue (do not type your real name) :</p>
+            <p>Please enter a nickname to continue:</p>
             <input type="text" id="nicknameInput" placeholder="Enter your nickname..." maxlength="25" />
             <div class="char-counter" id="charCounter">0/25 characters</div>
             <button id="setNicknameBtn" onclick="setNickname()">Join Chat</button>
         </div>
     </div>
 
+    <!-- Main Chat -->
     <div class="chat-container" id="chatContainer" style="display: none;">
         <div class="chat-header">💬 Live Chat</div>
         <div id="messages" class="chat-messages"></div>
@@ -212,28 +213,22 @@
     <script>
         let currentUserId = 'user_' + Math.random().toString(36).substr(2, 9);
         let currentNickname = '';
-        let userMessages = new Set();
 
-        // Show nickname modal on page load
+        // Show modal on load
         window.onload = function() {
             document.getElementById('nicknameModal').style.display = 'block';
             document.getElementById('nicknameInput').focus();
         };
 
-        // Character counter for nickname input
+        // Character counter
         document.getElementById('nicknameInput').addEventListener('input', function() {
             let input = this.value;
             let counter = document.getElementById('charCounter');
             counter.textContent = input.length + '/25 characters';
-            
-            if (input.length > 20) {
-                counter.classList.add('warning');
-            } else {
-                counter.classList.remove('warning');
-            }
+            counter.classList.toggle('warning', input.length > 20);
         });
 
-        // Enter key for nickname input
+        // Enter key for nickname
         document.getElementById('nicknameInput').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 setNickname();
@@ -245,16 +240,11 @@
             let nickname = input.value.trim();
             let btn = document.getElementById('setNicknameBtn');
             
-            if (nickname === '') {
+            if (!nickname) {
                 alert('Please enter a nickname');
                 return;
             }
             
-            if (nickname.length > 25) {
-                alert('Nickname must be 25 characters or less');
-                return;
-            }
-
             btn.disabled = true;
             btn.textContent = 'Joining...';
 
@@ -273,14 +263,13 @@
                     document.getElementById('nicknameModal').style.display = 'none';
                     document.getElementById('chatContainer').style.display = 'flex';
                     loadMessages();
-                    // Start message loading interval
                     setInterval(loadMessages, 2000);
                 } else {
                     let err = await res.json();
                     alert(err.error || 'Error setting nickname');
                 }
             } catch (error) {
-                console.error('Error setting nickname:', error);
+                console.error('Error:', error);
                 alert('Network error. Please try again.');
             } finally {
                 btn.disabled = false;
@@ -295,19 +284,16 @@
                 let messagesDiv = document.getElementById("messages");
                 messagesDiv.innerHTML = "";
                 
-                data.forEach((msg, i) => {
+                data.forEach((msg) => {
                     let div = document.createElement("div");
                     div.classList.add("bubble");
                     
-                    // Check if this message was sent by current user
                     if (msg.userId === currentUserId) {
                         div.classList.add("self");
-                        userMessages.add(msg.text);
                     } else {
                         div.classList.add("other");
                     }
                     
-                    // Create nickname and message content
                     let nicknameDiv = document.createElement("div");
                     nicknameDiv.classList.add("nickname");
                     nicknameDiv.textContent = msg.nickname;
@@ -332,9 +318,8 @@
             let sendBtn = document.getElementById("sendBtn");
             let text = input.value.trim();
             
-            if (text === "") return;
+            if (!text) return;
 
-            // Disable button to prevent double sending
             sendBtn.disabled = true;
             sendBtn.textContent = "Sending...";
 
@@ -360,13 +345,12 @@
                 console.error("Error sending message:", error);
                 alert("Network error. Please try again.");
             } finally {
-                // Re-enable button
                 sendBtn.disabled = false;
                 sendBtn.textContent = "Send";
             }
         }
 
-        // Press Enter to send message
+        // Enter key for messages
         document.getElementById("message").addEventListener("keypress", function(e) {
             if (e.key === "Enter") {
                 sendMessage();
