@@ -15,15 +15,15 @@
         }
 
         .chat-container {
-            width: 400px;
-            max-width: 90%;
+            width: 800px;
+            max-width: 95%;
             background: #fff;
             border-radius: 12px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            height: 500px;
+            height: 600px;
         }
 
         .chat-header {
@@ -41,10 +41,12 @@
             overflow-y: auto;
             border-top: 1px solid #eee;
             border-bottom: 1px solid #eee;
+            height: 450px;
+            max-height: 450px;
         }
 
         .bubble {
-            max-width: 75%;
+            max-width: 70%;
             margin: 6px 0;
             padding: 10px;
             border-radius: 12px;
@@ -63,6 +65,17 @@
             background: #e5e5ea;
             color: black;
             margin-right: auto;
+        }
+
+        .nickname {
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 4px;
+            opacity: 0.8;
+        }
+
+        .message-content {
+            font-size: 14px;
         }
 
         .chat-input {
@@ -99,10 +112,95 @@
             background: #ccc;
             cursor: not-allowed;
         }
+
+        /* Nickname Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: #fff;
+            margin: 15% auto;
+            padding: 30px;
+            border-radius: 12px;
+            width: 400px;
+            max-width: 90%;
+            text-align: center;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+        }
+
+        .modal h2 {
+            margin-top: 0;
+            color: #4a90e2;
+            font-size: 24px;
+        }
+
+        .modal input {
+            width: 100%;
+            padding: 12px;
+            margin: 15px 0;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            outline: none;
+            box-sizing: border-box;
+        }
+
+        .modal input:focus {
+            border-color: #4a90e2;
+        }
+
+        .modal button {
+            background: #4a90e2;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .modal button:hover {
+            background: #357abd;
+        }
+
+        .modal button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .char-counter {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .char-counter.warning {
+            color: #e74c3c;
+        }
     </style>
 </head>
 <body>
-    <div class="chat-container">
+    <!-- Nickname Modal -->
+    <div id="nicknameModal" class="modal">
+        <div class="modal-content">
+            <h2>Welcome to Live Chat!</h2>
+            <p>Please enter a nickname to continue (do not type your real name) :</p>
+            <input type="text" id="nicknameInput" placeholder="Enter your nickname..." maxlength="25" />
+            <div class="char-counter" id="charCounter">0/25 characters</div>
+            <button id="setNicknameBtn" onclick="setNickname()">Join Chat</button>
+        </div>
+    </div>
+
+    <div class="chat-container" id="chatContainer" style="display: none;">
         <div class="chat-header">💬 Live Chat</div>
         <div id="messages" class="chat-messages"></div>
         <div class="chat-input">
@@ -112,7 +210,83 @@
     </div>
 
     <script>
-        let lastSentMessages = [];
+        let currentUserId = 'user_' + Math.random().toString(36).substr(2, 9);
+        let currentNickname = '';
+        let userMessages = new Set();
+
+        // Show nickname modal on page load
+        window.onload = function() {
+            document.getElementById('nicknameModal').style.display = 'block';
+            document.getElementById('nicknameInput').focus();
+        };
+
+        // Character counter for nickname input
+        document.getElementById('nicknameInput').addEventListener('input', function() {
+            let input = this.value;
+            let counter = document.getElementById('charCounter');
+            counter.textContent = input.length + '/25 characters';
+            
+            if (input.length > 20) {
+                counter.classList.add('warning');
+            } else {
+                counter.classList.remove('warning');
+            }
+        });
+
+        // Enter key for nickname input
+        document.getElementById('nicknameInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                setNickname();
+            }
+        });
+
+        async function setNickname() {
+            let input = document.getElementById('nicknameInput');
+            let nickname = input.value.trim();
+            let btn = document.getElementById('setNicknameBtn');
+            
+            if (nickname === '') {
+                alert('Please enter a nickname');
+                return;
+            }
+            
+            if (nickname.length > 25) {
+                alert('Nickname must be 25 characters or less');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Joining...';
+
+            try {
+                let res = await fetch('/set_nickname', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        userId: currentUserId,
+                        nickname: nickname
+                    })
+                });
+
+                if (res.ok) {
+                    currentNickname = nickname;
+                    document.getElementById('nicknameModal').style.display = 'none';
+                    document.getElementById('chatContainer').style.display = 'flex';
+                    loadMessages();
+                    // Start message loading interval
+                    setInterval(loadMessages, 2000);
+                } else {
+                    let err = await res.json();
+                    alert(err.error || 'Error setting nickname');
+                }
+            } catch (error) {
+                console.error('Error setting nickname:', error);
+                alert('Network error. Please try again.');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Join Chat';
+            }
+        }
 
         async function loadMessages() {
             try {
@@ -126,13 +300,24 @@
                     div.classList.add("bubble");
                     
                     // Check if this message was sent by current user
-                    if (lastSentMessages.includes(msg.text)) {
+                    if (msg.userId === currentUserId) {
                         div.classList.add("self");
+                        userMessages.add(msg.text);
                     } else {
                         div.classList.add("other");
                     }
                     
-                    div.textContent = msg.text;
+                    // Create nickname and message content
+                    let nicknameDiv = document.createElement("div");
+                    nicknameDiv.classList.add("nickname");
+                    nicknameDiv.textContent = msg.nickname;
+                    
+                    let contentDiv = document.createElement("div");
+                    contentDiv.classList.add("message-content");
+                    contentDiv.textContent = msg.text;
+                    
+                    div.appendChild(nicknameDiv);
+                    div.appendChild(contentDiv);
                     messagesDiv.appendChild(div);
                 });
                 
@@ -157,15 +342,14 @@
                 let res = await fetch("/send", {
                     method: "POST",
                     headers: {"Content-Type": "application/json"},
-                    body: JSON.stringify({text: text})
+                    body: JSON.stringify({
+                        text: text,
+                        userId: currentUserId,
+                        nickname: currentNickname
+                    })
                 });
 
                 if (res.ok) {
-                    lastSentMessages.push(text);
-                    // Keep only last 10 sent messages to avoid memory issues
-                    if (lastSentMessages.length > 10) {
-                        lastSentMessages.shift();
-                    }
                     input.value = "";
                     loadMessages();
                 } else {
@@ -182,16 +366,12 @@
             }
         }
 
-        // Press Enter to send
+        // Press Enter to send message
         document.getElementById("message").addEventListener("keypress", function(e) {
             if (e.key === "Enter") {
                 sendMessage();
             }
         });
-
-        // Load messages every 2 seconds
-        setInterval(loadMessages, 2000); 
-        loadMessages();
     </script>
 </body>
 </html>
