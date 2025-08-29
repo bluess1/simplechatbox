@@ -612,7 +612,7 @@
                 <label class="form-label">Channel Type</label>
                 <select id="channelTypeSelect">
                     <option value="public">🌍 Public - Anyone can join</option>
-                    <option value="private">🔒 Private - Requires code to join</option>
+                    <option value="private">�� Private - Requires code to join</option>
                 </select>
             </div>
             
@@ -922,4 +922,205 @@
                         name: name,
                         type: type,
                         messageLifetime: messageLifetime,
-                        userId: currentUser.
+                        userId: currentUser.id
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    showError('createChannelError', data.error);
+                    return;
+                }
+
+                showSuccess('createChannelSuccess', 'Channel created successfully!');
+                closeModal('createChannelModal');
+                
+                // Clear form
+                document.getElementById('channelNameInput').value = '';
+                document.getElementById('channelTypeSelect').value = 'public';
+                document.getElementById('messageLifetimeSelect').value = '300';
+                document.getElementById('channelCodeDisplay').style.display = 'none';
+                
+                // Reload channels
+                loadChannels();
+
+            } catch (error) {
+                console.error('Error creating channel:', error);
+                showError('createChannelError', 'Failed to create channel. Please try again.');
+            }
+        }
+
+        async function joinChannel(channelId) {
+            try {
+                const response = await fetch('/join_channel', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        channelId: channelId,
+                        code: ''
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    showError('joinChannelError', data.error);
+                    return;
+                }
+
+                currentChannel = channelId;
+                document.getElementById('chatTitle').textContent = data.channel.name;
+                document.getElementById('chatMeta').textContent = `Channel type: ${data.channel.type}`;
+                
+                // Update sidebar active state
+                document.querySelectorAll('.channel-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                event.target.closest('.channel-item').classList.add('active');
+                
+                // Enable message input if user has nickname
+                if (currentUser.nickname) {
+                    document.getElementById('messageInput').disabled = false;
+                    document.getElementById('sendBtn').disabled = false;
+                }
+                
+                // Load messages
+                loadMessages(channelId);
+                
+                // Start message polling
+                startMessagePolling(channelId);
+
+            } catch (error) {
+                console.error('Error joining channel:', error);
+                showError('joinChannelError', 'Failed to join channel. Please try again.');
+            }
+        }
+
+        async function joinPrivateChannel() {
+            const code = document.getElementById('channelCodeInput').value.trim();
+            
+            if (!code) {
+                showError('joinChannelError', 'Please enter a channel code');
+                return;
+            }
+
+            try {
+                // Find channel by code
+                const response = await fetch('/channels');
+                const channels = await response.json();
+                
+                const privateChannel = channels.find(c => c.type === 'private' && c.code === code);
+                
+                if (!privateChannel) {
+                    showError('joinChannelError', 'Invalid channel code');
+                    return;
+                }
+
+                // Join the channel
+                await joinChannel(privateChannel.id);
+                closeModal('joinChannelModal');
+                document.getElementById('channelCodeInput').value = '';
+
+            } catch (error) {
+                console.error('Error joining private channel:', error);
+                showError('joinChannelError', 'Failed to join private channel. Please try again.');
+            }
+        }
+
+        async function loadMessages(channelId) {
+            try {
+                const response = await fetch(`/messages/${channelId}`);
+                const messages = await response.json();
+
+                const chatMessages = document.getElementById('chatMessages');
+                chatMessages.innerHTML = '';
+
+                messages.forEach(message => {
+                    const messageWrapper = document.createElement('div');
+                    messageWrapper.className = `message-wrapper ${message.userId === currentUser.id ? 'self' : 'other'}`;
+                    
+                    messageWrapper.innerHTML = `
+                        <div class="nickname">${message.nickname}</div>
+                        <div class="bubble ${message.userId === currentUser.id ? 'self' : 'other'}">
+                            ${message.text}
+                            <div class="timestamp">${formatTime(message.timestamp)}</div>
+                        </div>
+                    `;
+                    
+                    chatMessages.appendChild(messageWrapper);
+                });
+
+                // Scroll to bottom
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            } catch (error) {
+                console.error('Error loading messages:', error);
+            }
+        }
+
+        function startMessagePolling(channelId) {
+            if (messageInterval) {
+                clearInterval(messageInterval);
+            }
+            
+            messageInterval = setInterval(() => {
+                if (currentChannel === channelId) {
+                    loadMessages(channelId);
+                }
+            }, 3000); // Poll every 3 seconds
+        }
+
+        async function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const text = messageInput.value.trim();
+            
+            if (!text) {
+                return;
+            }
+
+            if (!currentChannel) {
+                showError('nicknameError', 'Please select a channel first');
+                return;
+            }
+
+            if (!currentUser.nickname) {
+                showError('nicknameError', 'Please set a nickname first');
+                return;
+            }
+
+            try {
+                const response = await fetch('/send', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        text: text,
+                        userId: currentUser.id,
+                        nickname: currentUser.nickname,
+                        channelId: currentChannel
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    showError('nicknameError', data.error);
+                    return;
+                }
+
+                // Clear input and reload messages
+                messageInput.value = '';
+                loadMessages(currentChannel);
+
+            } catch (error) {
+                console.error('Error sending message:', error);
+                showError('nicknameError', 'Failed to send message. Please try again.');
+            }
+        }
+    </script>
+</body>
+</html>
