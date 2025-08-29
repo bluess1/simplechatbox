@@ -4,7 +4,7 @@ import time, os
 app = Flask(__name__)
 
 messages = []
-MAX_AGE = 10  #time before msg is deleted
+MAX_AGE = 1200  #time before msg is deleted
 
 def cleanup():
     now = time.time()
