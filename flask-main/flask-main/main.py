@@ -125,6 +125,8 @@ def get_channels():
         })
     return jsonify(channel_list)
 
+# ... existing code ...
+
 @app.route("/create_channel", methods=["POST"])
 def create_channel():
     try:
@@ -136,6 +138,7 @@ def create_channel():
         channel_type = data.get("type", "public")
         message_lifetime = int(data.get("messageLifetime", 300))
         user_id = data.get("userId", "").strip()
+        custom_code = data.get("customCode", "").strip()  # Add this line
         
         if not name or not user_id:
             return jsonify({"error": "Channel name and user ID are required"}), 400
@@ -146,10 +149,22 @@ def create_channel():
         if message_lifetime < 60 or message_lifetime > 86400:
             return jsonify({"error": "Message lifetime must be between 1 minute and 24 hours"}), 400
         
+        # Add validation for custom codes
+        if channel_type == "private":
+            if not custom_code or len(custom_code) != 6:
+                return jsonify({"error": "Private channels require a 6-character code"}), 400
+            if not custom_code.isalnum():
+                return jsonify({"error": "Channel code must contain only letters and numbers"}), 400
+        
         cleanup_messages()
         
         channel_id = name.lower().replace(" ", "-") + "-" + ''.join(random.choices(string.ascii_lowercase + string.digits, k=4))
-        code = generate_channel_code() if channel_type == "private" else None
+        
+        # Use custom code if provided, otherwise generate random
+        if channel_type == "private":
+            code = custom_code.upper() if custom_code else generate_channel_code()
+        else:
+            code = None
         
         channels[channel_id] = {
             "id": channel_id,
@@ -176,6 +191,8 @@ def create_channel():
     except Exception as e:
         print(f"Error in create_channel: {str(e)}")
         return jsonify({"error": "Server error"}), 500
+
+# ... existing code ...
 
 @app.route("/join_channel", methods=["POST"])
 def join_channel():
