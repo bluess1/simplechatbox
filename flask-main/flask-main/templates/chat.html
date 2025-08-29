@@ -4,116 +4,213 @@
     <meta charset="UTF-8">
     <title>Live Chat</title>
     <style>
+        :root {
+            --bg-primary: #f8fafc;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f1f5f9;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --accent-primary: #3b82f6;
+            --accent-hover: #2563eb;
+            --border-color: #e2e8f0;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --accent-primary: #3b82f6;
+            --accent-hover: #60a5fa;
+            --border-color: #475569;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+        }
+
+        [data-theme="blue"] {
+            --bg-primary: #dbeafe;
+            --bg-secondary: #eff6ff;
+            --bg-tertiary: #bfdbfe;
+            --text-primary: #1e3a8a;
+            --text-secondary: #3730a3;
+            --accent-primary: #1d4ed8;
+            --accent-hover: #1e40af;
+            --border-color: #93c5fd;
+            --shadow: 0 4px 6px -1px rgba(29, 78, 216, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(29, 78, 216, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            background: #f2f2f2;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            margin: 0;
+            min-height: 100vh;
+            transition: all 0.3s ease;
         }
 
         .chat-container {
-            width: 800px;
+            width: 900px;
             max-width: 95%;
-            background: #fff;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            box-shadow: var(--shadow-lg);
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            height: 600px;
+            height: 650px;
+            border: 1px solid var(--border-color);
         }
 
         .chat-header {
-            background: #4a90e2;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-hover));
             color: white;
-            padding: 12px;
+            padding: 20px;
             text-align: center;
-            font-size: 18px;
-            font-weight: bold;
+            font-size: 20px;
+            font-weight: 600;
+            position: relative;
+            box-shadow: var(--shadow);
+        }
+
+        .theme-selector {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .theme-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .theme-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
         }
 
         .chat-messages {
             flex: 1;
-            padding: 12px;
+            padding: 20px;
             overflow-y: auto;
-            border-top: 1px solid #eee;
-            border-bottom: 1px solid #eee;
+            background: var(--bg-primary);
             height: 450px;
             max-height: 450px;
         }
 
-        .bubble {
-            max-width: 70%;
-            margin: 6px 0;
-            padding: 10px;
-            border-radius: 12px;
-            clear: both;
-            word-wrap: break-word;
+        .message-wrapper {
+            margin-bottom: 16px;
+            display: flex;
+            flex-direction: column;
         }
 
-        .bubble.self {
-            background: #4a90e2;
-            color: white;
-            margin-left: auto;
-            text-align: right;
+        .message-wrapper.self {
+            align-items: flex-end;
         }
 
-        .bubble.other {
-            background: #e5e5ea;
-            color: black;
-            margin-right: auto;
+        .message-wrapper.other {
+            align-items: flex-start;
         }
 
         .nickname {
-            font-size: 12px;
-            font-weight: bold;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-secondary);
             margin-bottom: 4px;
-            opacity: 0.8;
+            padding: 0 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .message-content {
+        .bubble {
+            max-width: 75%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            word-wrap: break-word;
             font-size: 14px;
+            line-height: 1.4;
+            box-shadow: var(--shadow);
+            position: relative;
+        }
+
+        .bubble.self {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-hover));
+            color: white;
+        }
+
+        .bubble.other {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
         }
 
         .chat-input {
             display: flex;
-            padding: 10px;
-            background: #fafafa;
+            padding: 20px;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            gap: 12px;
         }
 
         .chat-input input {
             flex: 1;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
+            padding: 14px 18px;
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
             outline: none;
             font-size: 14px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+        }
+
+        .chat-input input:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
 
         .chat-input button {
-            margin-left: 8px;
-            padding: 10px 16px;
-            background: #4a90e2;
+            padding: 14px 24px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-hover));
             border: none;
-            border-radius: 6px;
+            border-radius: 12px;
             color: white;
             cursor: pointer;
             font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow);
         }
 
-        .chat-input button:hover {
-            background: #357abd;
+        .chat-input button:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-lg);
         }
 
         .chat-input button:disabled {
-            background: #ccc;
+            background: var(--text-secondary);
             cursor: not-allowed;
+            transform: none;
         }
 
-        /* Nickname Modal */
+        /* Modal Styles */
         .modal {
             display: none;
             position: fixed;
@@ -122,78 +219,153 @@
             top: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0,0,0,0.5);
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
         }
 
         .modal-content {
-            background-color: #fff;
-            margin: 15% auto;
-            padding: 30px;
-            border-radius: 12px;
-            width: 400px;
+            background: var(--bg-secondary);
+            margin: 10% auto;
+            padding: 40px;
+            border-radius: 20px;
+            width: 450px;
             max-width: 90%;
             text-align: center;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border-color);
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
         }
 
         .modal h2 {
-            margin-top: 0;
-            color: #4a90e2;
-            font-size: 24px;
+            color: var(--text-primary);
+            font-size: 28px;
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+
+        .modal p {
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+            font-size: 15px;
         }
 
         .modal input {
             width: 100%;
-            padding: 12px;
-            margin: 15px 0;
-            border: 2px solid #ddd;
-            border-radius: 8px;
+            padding: 16px 20px;
+            margin: 16px 0;
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
             font-size: 16px;
             outline: none;
-            box-sizing: border-box;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: all 0.3s ease;
         }
 
         .modal input:focus {
-            border-color: #4a90e2;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
 
         .modal button {
-            background: #4a90e2;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-hover));
             color: white;
             border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
+            padding: 16px 32px;
+            border-radius: 12px;
             font-size: 16px;
+            font-weight: 600;
             cursor: pointer;
-            margin-top: 10px;
+            margin-top: 16px;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow);
         }
 
-        .modal button:hover {
-            background: #357abd;
+        .modal button:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-lg);
         }
 
         .modal button:disabled {
-            background: #ccc;
+            background: var(--text-secondary);
             cursor: not-allowed;
+            transform: none;
         }
 
         .char-counter {
             font-size: 12px;
-            color: #666;
-            margin-top: 5px;
+            color: var(--text-secondary);
+            margin-top: 8px;
+            font-weight: 500;
         }
 
         .char-counter.warning {
-            color: #e74c3c;
+            color: #ef4444;
+            font-weight: 600;
+        }
+
+        /* Scrollbar Styling */
+        .chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-messages::-webkit-scrollbar-track {
+            background: var(--bg-tertiary);
+            border-radius: 3px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: var(--text-secondary);
+            border-radius: 3px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-primary);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .chat-container {
+                width: 100%;
+                height: 100vh;
+                border-radius: 0;
+            }
+            
+            .modal-content {
+                width: 95%;
+                padding: 30px 20px;
+            }
+            
+            .theme-selector {
+                position: static;
+                transform: none;
+                margin-top: 10px;
+            }
+            
+            .chat-header {
+                flex-direction: column;
+                gap: 10px;
+            }
         }
     </style>
 </head>
-<body>
+<body data-theme="light">
     <!-- Nickname Modal -->
     <div id="nicknameModal" class="modal">
         <div class="modal-content">
-            <h2>Welcome to Live Chat!</h2>
-            <p>Please enter a nickname to continue:</p>
+            <h2>🌟 Welcome!</h2>
+            <p>Choose a nickname to join the conversation</p>
             <input type="text" id="nicknameInput" placeholder="Enter your nickname..." maxlength="25" />
             <div class="char-counter" id="charCounter">0/25 characters</div>
             <button id="setNicknameBtn" onclick="setNickname()">Join Chat</button>
@@ -202,10 +374,19 @@
 
     <!-- Main Chat -->
     <div class="chat-container" id="chatContainer" style="display: none;">
-        <div class="chat-header">💬 Live Chat</div>
+        <div class="chat-header">
+            💬 Live Chat
+            <div class="theme-selector">
+                <select class="theme-btn" id="themeSelector" onchange="changeTheme()">
+                    <option value="light">☀️ Light</option>
+                    <option value="dark">🌙 Dark</option>
+                    <option value="blue">💙 Blue</option>
+                </select>
+            </div>
+        </div>
         <div id="messages" class="chat-messages"></div>
         <div class="chat-input">
-            <input type="text" id="message" placeholder="Type a message..." />
+            <input type="text" id="message" placeholder="Type your message..." />
             <button id="sendBtn" onclick="sendMessage()">Send</button>
         </div>
     </div>
@@ -214,8 +395,23 @@
         let currentUserId = 'user_' + Math.random().toString(36).substr(2, 9);
         let currentNickname = '';
 
+        // Theme Management
+        function changeTheme() {
+            const theme = document.getElementById('themeSelector').value;
+            document.body.setAttribute('data-theme', theme);
+            localStorage.setItem('chatTheme', theme);
+        }
+
+        // Load saved theme
+        function loadTheme() {
+            const savedTheme = localStorage.getItem('chatTheme') || 'light';
+            document.body.setAttribute('data-theme', savedTheme);
+            document.getElementById('themeSelector').value = savedTheme;
+        }
+
         // Show modal on load
         window.onload = function() {
+            loadTheme();
             document.getElementById('nicknameModal').style.display = 'block';
             document.getElementById('nicknameInput').focus();
         };
@@ -285,26 +481,33 @@
                 messagesDiv.innerHTML = "";
                 
                 data.forEach((msg) => {
-                    let div = document.createElement("div");
-                    div.classList.add("bubble");
+                    let wrapper = document.createElement("div");
+                    wrapper.classList.add("message-wrapper");
                     
                     if (msg.userId === currentUserId) {
-                        div.classList.add("self");
+                        wrapper.classList.add("self");
                     } else {
-                        div.classList.add("other");
+                        wrapper.classList.add("other");
                     }
                     
                     let nicknameDiv = document.createElement("div");
                     nicknameDiv.classList.add("nickname");
                     nicknameDiv.textContent = msg.nickname;
                     
-                    let contentDiv = document.createElement("div");
-                    contentDiv.classList.add("message-content");
-                    contentDiv.textContent = msg.text;
+                    let bubble = document.createElement("div");
+                    bubble.classList.add("bubble");
                     
-                    div.appendChild(nicknameDiv);
-                    div.appendChild(contentDiv);
-                    messagesDiv.appendChild(div);
+                    if (msg.userId === currentUserId) {
+                        bubble.classList.add("self");
+                    } else {
+                        bubble.classList.add("other");
+                    }
+                    
+                    bubble.textContent = msg.text;
+                    
+                    wrapper.appendChild(nicknameDiv);
+                    wrapper.appendChild(bubble);
+                    messagesDiv.appendChild(wrapper);
                 });
                 
                 messagesDiv.scrollTop = messagesDiv.scrollHeight;
