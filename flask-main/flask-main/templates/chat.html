@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Chat</title>
+</head>
+<body>
+    <h2>Group Chat</h2>
+    <div id="chat" style="border:1px solid #000; height:300px; width:400px; overflow:auto;"></div>
+    <input id="msg" placeholder="Type message">
+    <button onclick="sendMessage()">Send</button>
+
+    <script>
+        async function loadMessages() {
+            let res = await fetch("/messages");
+            let messages = await res.json();
+            let chat = document.getElementById("chat");
+            chat.innerHTML = "";
+            messages.forEach(m => {
+                let p = document.createElement("p");
+                p.textContent = m;
+                chat.appendChild(p);
+            });
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+        async function sendMessage() {
+            let msg = document.getElementById("msg").value;
+            if(msg.trim() !== ""){
+                await fetch("/send?msg=" + encodeURIComponent(msg));
+                document.getElementById("msg").value = "";
+                loadMessages();
+            }
+        }
+
+        setInterval(loadMessages, 2000); // refresh every 2s
+        loadMessages();
+    </script>
+</body>
+</html>
