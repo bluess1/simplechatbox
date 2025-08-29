@@ -35,13 +35,13 @@ def normalize(text):
     return text
 
 banned_words = [
-    "bomb", "shoot", "kill", "murder", "terrorist", "violence", "gun", "knife", "weapon", "attack", "assault",
-    "hate", "nazi", "hitler", "racist", "sexist", "homophobe", "bigot", "retard", "fag", "faggot",
-    "porn", "sex", "nude", "naked", "horny", "sexy", "dick", "penis", "vagina", "boobs", "ass",
-    "cocaine", "heroin", "meth", "drugs", "weed", "marijuana", "crack", "ecstasy", "lsd",
-    "spam", "scam", "hack", "cheat", "exploit", "bot", "fake", "phishing",
-    "stupid", "idiot", "moron", "loser", "noob", "trash", "garbage", "worthless", "pathetic",
-    "fuck", "shit", "damn", "hell", "bitch", "bastard", "crap", "piss", "whore", "slut"
+    "bomb", "shoot", "shooter", "b0mb", "terrorist", "violence", "", "", "weapon", "", "",
+    "", "nazi", "hitler", "", "", "", "", "", "", "",
+    "", "sex", "nude", "naked", "horny", "sexy", "dick", "", "vagina", "boobs", "",
+    "", "heroin", "", "drugs", "", "marijuana", "crack", "ecstasy", "lsd",
+    "", "", "", "", "", "", "", "",
+    "", "nigger", "nga", "n i g g e r", "nigga", "n i g g a", "n g a", "nigge", "niggar",
+    "fuck", "", "", "", "bitch", "", "", "", "", ""
 ]
 
 def contains_banned_content(text):
