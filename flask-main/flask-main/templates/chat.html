@@ -42,6 +42,26 @@
             border-bottom: 1px solid #eee;
         }
 
+        .bubble {
+            max-width: 75%;
+            margin: 6px 0;
+            padding: 10px;
+            border-radius: 12px;
+            clear: both;
+        }
+
+        .bubble.self {
+            background: #4a90e2;
+            color: white;
+            margin-left: auto;
+        }
+
+        .bubble.other {
+            background: #e5e5ea;
+            color: black;
+            margin-right: auto;
+        }
+
         .chat-input {
             display: flex;
             padding: 10px;
@@ -89,25 +109,42 @@
             let data = await res.json();
             let messagesDiv = document.getElementById("messages");
             messagesDiv.innerHTML = "";
-            data.forEach(msg => {
-                let p = document.createElement("p");
-                p.textContent = msg.text;
-                messagesDiv.appendChild(p);
+            data.forEach((msg, i) => {
+                let div = document.createElement("div");
+                div.classList.add("bubble");
+                // last message is from "you"
+                if (i === data.length - 1 && lastSent === msg.text) {
+                    div.classList.add("self");
+                } else {
+                    div.classList.add("other");
+                }
+                div.textContent = msg.text;
+                messagesDiv.appendChild(div);
             });
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
+
+        let lastSent = "";
 
         async function sendMessage() {
             let input = document.getElementById("message");
             let text = input.value.trim();
             if (text === "") return;
-            await fetch("/send", {
+
+            let res = await fetch("/send", {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify({text})
             });
-            input.value = "";
-            loadMessages();
+
+            if (res.ok) {
+                lastSent = text;
+                input.value = "";
+                loadMessages();
+            } else {
+                let err = await res.json();
+                alert(err.error);
+            }
         }
 
         // Press Enter to send
@@ -117,7 +154,7 @@
             }
         });
 
-        setInterval(loadMessages, 2000); // Refresh every 2s
+        setInterval(loadMessages, 2000); 
         loadMessages();
     </script>
 </body>
