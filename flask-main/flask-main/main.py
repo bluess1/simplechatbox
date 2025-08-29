@@ -86,9 +86,9 @@ def cleanup_messages():
     for channel_id in channels_to_remove:
         del channels[channel_id]
 
-@app.route("/")
-def index():
-    return render_template("chat.html")
+@app.route("/admin")
+def admin():
+    return render_template("admin.html")
 
 @app.route("/set_nickname", methods=["POST"])
 def set_nickname():
