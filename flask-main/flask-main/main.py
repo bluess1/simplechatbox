@@ -35,13 +35,13 @@ def normalize(text):
     return text
 
 banned_words = [
-    "bomb", "shoot", "shooter", "b0mb", "terrorist", "violence", "", "", "weapon", "", "",
-    "", "nazi", "hitler", "", "", "", "", "", "", "",
-    "", "sex", "nude", "naked", "horny", "sexy", "dick", "", "vagina", "boobs", "",
-    "", "heroin", "", "drugs", "", "marijuana", "crack", "ecstasy", "lsd",
-    "", "", "", "", "", "", "", "",
-    "", "nigger", "nga", "n i g g e r", "nigga", "n i g g a", "n g a", "nigge", "niggar",
-    "fuck", "", "", "", "bitch", "", "", "", "", ""
+    "bomb", "shoot", "shooter", "b0mb", "terrorist", "violence", "345dfgdfwe4dfg", "345dfgdfwe4dfg", "weapon", "345dfgdfwe4dfg", "345dfgdfwe4dfg",
+    "345dfgdfwe4dfg", "nazi", "hitler", "345dfgdfwe4dfg", "345dfgdfwe4dfg", "345dfgdfwe4dfg", "345dfgdfwe4dfg", "345dfgdfwe4dfg", "345dfgdfwe4dfg", "345dfgdfwe4dfg",
+    "345dfgdfwe4dfg", "sex", "nude", "naked", "horny", "sexy", "dick", "", "vagina", "boobs", "345dfgdfwe4dfg",
+    "345dfgdfwe4dfg", "heroin", "345dfgdfwe4dfg", "drugs", "", "marijuana", "crack", "ecstasy", "lsd",
+    "345dfgdfwe4dfg", "345dfgdfwe4dfg", "345dfgdfwe4dfg", "345dfgdfwe4dfg", "345dfgdfwe4dfg", "345dfgdfwe4dfg", "345dfgdfwe4dfg", "345dfgdfwe4dfg",
+    "345dfgdfwe4dfg", "nigger", "nga", "n i g g e r", "nigga", "n i g g a", "n g a", "nigge", "niggar",
+    "fuck", "345dfgdfwe4dfg", "345dfgdfwe4dfg", "345dfgdfwe4dfg", "bitch", "345dfgdfwe4dfg", "345dfgdfwe4dfg", "345dfgdfwe4dfg", "345dfgdfwe4dfg", "345dfgdfwe4dfg"
 ]
 
 def contains_banned_content(text):
