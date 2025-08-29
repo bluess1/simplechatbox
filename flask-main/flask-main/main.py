@@ -15,7 +15,9 @@ channels = {
         "created_at": time.time(),
         "last_activity": time.time(),
         "message_lifetime": 300,  # 5 minutes default
-        "creator": "system"
+        "creator": "system",
+        "members": set(),  # Track who has joined
+        "is_system": True  # Mark system channels
     }
 }
 nicknames = {}
@@ -35,13 +37,13 @@ def normalize(text):
     return text
 
 banned_words = [
-    "bomb", "shoot", "shooter", "b0mb", "terrorist", "violence", "345dfgdfwe4dfg", "345dfgdfwe4dfg", "weapon", "345dfgdfwe4dfg", "345dfgdfwe4dfg",
-    "345dfgdfwe4dfg", "nazi", "hitler", "345dfgdfwe4dfg", "345dfgdfwe4dfg", "345dfgdfwe4dfg", "345dfgdfwe4dfg", "345dfgdfwe4dfg", "345dfgdfwe4dfg", "345dfgdfwe4dfg",
-    "345dfgdfwe4dfg", "sex", "nude", "naked", "horny", "sexy", "dick", "", "vagina", "boobs", "345dfgdfwe4dfg",
-    "345dfgdfwe4dfg", "heroin", "345dfgdfwe4dfg", "drugs", "", "marijuana", "crack", "ecstasy", "lsd",
-    "345dfgdfwe4dfg", "345dfgdfwe4dfg", "345dfgdfwe4dfg", "345dfgdfwe4dfg", "345dfgdfwe4dfg", "345dfgdfwe4dfg", "345dfgdfwe4dfg", "345dfgdfwe4dfg",
-    "345dfgdfwe4dfg", "nigger", "nga", "n i g g e r", "nigga", "n i g g a", "n g a", "nigge", "niggar",
-    "fuck", "345dfgdfwe4dfg", "345dfgdfwe4dfg", "345dfgdfwe4dfg", "bitch", "345dfgdfwe4dfg", "345dfgdfwe4dfg", "345dfgdfwe4dfg", "345dfgdfwe4dfg", "345dfgdfwe4dfg"
+    "bomb", "shoot", "kill", "murder", "terrorist", "violence", "gun", "knife", "weapon", "attack", "assault",
+    "hate", "nazi", "hitler", "racist", "sexist", "homophobe", "bigot", "retard", "fag", "faggot",
+    "porn", "sex", "nude", "naked", "horny", "sexy", "dick", "penis", "vagina", "boobs", "ass",
+    "cocaine", "heroin", "meth", "drugs", "weed", "marijuana", "crack", "ecstasy", "lsd",
+    "spam", "scam", "hack", "cheat", "exploit", "bot", "fake", "phishing",
+    "stupid", "idiot", "moron", "loser", "noob", "trash", "garbage", "worthless", "pathetic",
+    "fuck", "shit", "damn", "hell", "bitch", "bastard", "crap", "piss", "whore", "slut"
 ]
 
 def contains_banned_content(text):
@@ -61,7 +63,7 @@ def generate_channel_code():
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
 
 def cleanup_messages():
-    """Remove old messages based on each channel's message lifetime"""
+    """Remove old messages and inactive channels"""
     now = time.time()
     global channels, nicknames
     
@@ -74,9 +76,11 @@ def cleanup_messages():
         # Remove old messages based on channel's message lifetime
         channel["messages"] = [m for m in channel["messages"] if now - m["time"] < channel["message_lifetime"]]
         
-        # Remove inactive channels (40 hours = 144000 seconds), except main
-        if channel_id != "main" and now - channel["last_activity"] > 144000:
-            channels_to_remove.append(channel_id)
+        # Remove inactive user-created channels after 12 hours (43200 seconds)
+        if not channel.get("is_system", False):  # Only check user-created channels
+            if now - channel["last_activity"] > 43200:  # 12 hours
+                channels_to_remove.append(channel_id)
+                print(f"Auto-deleting inactive channel: {channel['name']} (ID: {channel_id})")
     
     # Remove inactive channels
     for channel_id in channels_to_remove:
@@ -122,7 +126,8 @@ def get_channels():
             "type": channel["type"],
             "code": channel.get("code"),
             "message_count": len(channel["messages"]),
-            "last_activity": channel["last_activity"]
+            "last_activity": channel["last_activity"],
+            "is_system": channel.get("is_system", False)
         })
     return jsonify(channel_list)
 
@@ -137,7 +142,7 @@ def create_channel():
         channel_type = data.get("type", "public")
         message_lifetime = int(data.get("messageLifetime", 300))
         user_id = data.get("userId", "").strip()
-        custom_code = data.get("customCode", "").strip()  # Add this line
+        custom_code = data.get("customCode", "").strip()
         
         if not name or not user_id:
             return jsonify({"error": "Channel name and user ID are required"}), 400
@@ -174,7 +179,9 @@ def create_channel():
             "created_at": time.time(),
             "last_activity": time.time(),
             "message_lifetime": message_lifetime,
-            "creator": user_id
+            "creator": user_id,
+            "members": {user_id},  # Creator automatically becomes a member
+            "is_system": False  # Mark as user-created channel
         }
         
         return jsonify({
@@ -200,6 +207,7 @@ def join_channel():
             
         channel_id = data.get("channelId", "").strip()
         code = data.get("code", "").strip()
+        user_id = data.get("userId", "").strip()
         
         if not channel_id:
             return jsonify({"error": "Channel ID is required"}), 400
@@ -213,10 +221,22 @@ def join_channel():
         
         # Check if private channel requires code
         if channel["type"] == "private":
-            if not code:
-                return jsonify({"error": "Private channel requires a code to join"}), 403
-            if channel["code"] != code.upper():
-                return jsonify({"error": "Invalid channel code"}), 403
+            # Check if user is already a member
+            if user_id in channel["members"]:
+                # User is already a member, no need for code
+                pass
+            else:
+                # New user needs to provide code
+                if not code:
+                    return jsonify({"error": "Private channel requires a code to join"}), 403
+                if channel["code"] != code.upper():
+                    return jsonify({"error": "Invalid channel code"}), 403
+                
+                # Add user to members when they successfully join with code
+                channel["members"].add(user_id)
+        
+        # Update last activity when someone joins
+        channel["last_activity"] = time.time()
         
         return jsonify({
             "success": True,
@@ -271,6 +291,11 @@ def send_message():
         if channel_id not in channels:
             return jsonify({"error": "Channel not found"}), 404
         
+        # For private channels, check if user is a member
+        channel = channels[channel_id]
+        if channel["type"] == "private" and user_id not in channel["members"]:
+            return jsonify({"error": "You are not a member of this private channel"}), 403
+        
         # Update nickname and channel activity
         nicknames[user_id] = {"nickname": nickname, "time": time.time()}
         channels[channel_id]["last_activity"] = time.time()
@@ -291,11 +316,47 @@ def send_message():
         print(f"Error in send_message: {str(e)}")
         return jsonify({"error": "Server error"}), 500
 
+@app.route("/delete_channel", methods=["POST"])
+def delete_channel():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+            
+        channel_id = data.get("channelId", "").strip()
+        user_id = data.get("userId", "").strip()
+        
+        if not channel_id or not user_id:
+            return jsonify({"error": "Channel ID and user ID are required"}), 400
+        
+        if channel_id == "main":
+            return jsonify({"error": "Cannot delete the main channel"}), 403
+        
+        cleanup_messages()
+        
+        if channel_id not in channels:
+            return jsonify({"error": "Channel not found"}), 404
+        
+        channel = channels[channel_id]
+        
+        # Check if user is a member of the channel
+        if user_id not in channel["members"]:
+            return jsonify({"error": "You are not a member of this channel"}), 403
+        
+        # Delete the channel
+        del channels[channel_id]
+        
+        return jsonify({"success": True, "message": "Channel deleted successfully"})
+        
+    except Exception as e:
+        print(f"Error in delete_channel: {str(e)}")
+        return jsonify({"error": "Server error"}), 500
+
 @app.route("/channel_info/<channel_id>")
 def get_channel_info(channel_id):
     cleanup_messages()
     
-    if channel_id not in channels_id:
+    if channel_id not in channels:
         return jsonify({"error": "Channel not found"}), 404
     
     channel = channels[channel_id]
@@ -307,7 +368,8 @@ def get_channel_info(channel_id):
         "messageLifetime": channel["message_lifetime"],
         "messageCount": len(channel["messages"]),
         "lastActivity": channel["last_activity"],
-        "creator": channel["creator"]
+        "creator": channel["creator"],
+        "is_system": channel.get("is_system", False)
     })
 
 if __name__ == "__main__":
