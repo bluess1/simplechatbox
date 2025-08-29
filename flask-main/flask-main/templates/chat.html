@@ -1075,61 +1075,61 @@
         }
 
         async function joinChannel(channelId) {
-            try {
-                const response = await fetch('/join_channel', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        channelId: channelId,
-                        code: '',
-                        userId: currentUser.id
-                    })
-                });
+    try {
+        const response = await fetch('/join_channel', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                channelId: channelId,
+                code: '',
+                userId: currentUser.id
+            })
+        });
 
-                const data = await response.json();
+        const data = await response.json();
 
-                if (data.error) {
-                    showError('joinChannelError', data.error);
-                    return;
-                }
-
-                currentChannel = channelId;
-                document.getElementById('chatTitle').textContent = data.channel.name;
-                document.getElementById('chatMeta').textContent = `Channel type: ${data.channel.type}`;
-                
-                // Update sidebar active state
-                document.querySelectorAll('.channel-item').forEach(item => {
-                    item.classList.remove('active');
-                });
-                
-                // Find and activate the clicked channel item
-                const channelItems = document.querySelectorAll('.channel-item');
-                for (let item of channelItems) {
-                    if (item.onclick && item.onclick.toString().includes(channelId)) {
-                        item.classList.add('active');
-                        break;
-                    }
-                }
-                
-                // Enable message input if user has nickname
-                if (currentUser.nickname) {
-                    document.getElementById('messageInput').disabled = false;
-                    document.getElementById('sendBtn').disabled = false;
-                }
-                
-                // Load messages immediately
-                loadMessages(channelId);
-                
-                // Start message polling
-                startMessagePolling(channelId);
-
-            } catch (error) {
-                console.error('Error joining channel:', error);
-                showError('joinChannelError', 'Failed to join channel. Please try again.');
-            }
+        if (data.error) {
+            showError('joinChannelError', data.error);
+            return;
         }
+
+        currentChannel = channelId;
+        document.getElementById('chatTitle').textContent = data.channel.name;
+        document.getElementById('chatMeta').textContent = `Channel type: ${data.channel.type}`;
+        
+        // Update sidebar active state - FIXED VERSION
+        document.querySelectorAll('.channel-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        
+        // Find and activate the clicked channel item by data attribute
+        const channelItems = document.querySelectorAll('.channel-item');
+        channelItems.forEach((item, index) => {
+            // Check if this item corresponds to the selected channel
+            if (allChannels[index] && allChannels[index].id === channelId) {
+                item.classList.add('active');
+            }
+        });
+        
+        // Enable message input if user has nickname
+        if (currentUser.nickname) {
+            document.getElementById('messageInput').disabled = false;
+            document.getElementById('sendBtn').disabled = false;
+        }
+        
+        // Load messages immediately
+        loadMessages(channelId);
+        
+        // Start message polling
+        startMessagePolling(channelId);
+
+    } catch (error) {
+        console.error('Error joining channel:', error);
+        showError('joinChannelError', 'Failed to join channel. Please try again.');
+    }
+}
 
         async function joinPrivateChannel() {
             const code = document.getElementById('channelCodeInput').value.trim();
@@ -1380,3 +1380,4 @@
     </script>
 </body>
 </html>
+
