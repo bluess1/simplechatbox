@@ -99,20 +99,382 @@
         }
 
         .sidebar-header h1 {
-            font-size: 20px;
-            font-weight: 700;
-            margin-bottom: 5px;
+            margin-bottom: 10px;
+            font-size: 24px;
+            font-weight: 600;
         }
 
         .sidebar-header p {
-            font-size: 12px;
+            font-size: 14px;
             opacity: 0.9;
         }
 
         .sidebar-content {
             flex: 1;
-            padding: 20px;
             overflow-y: auto;
+            padding: 20px;
+        }
+
+        .sidebar-section {
+            margin-bottom: 25px;
+        }
+
+        .sidebar-section h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .channel-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            margin-bottom: 6px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: var(--bg-tertiary);
+            border: 1px solid transparent;
+        }
+
+        .channel-item:hover {
+            background: var(--accent-primary);
+            color: white;
+            transform: translateX(4px);
+        }
+
+        .channel-item.active {
+            background: var(--accent-primary);
+            color: white;
+            border-color: var(--accent-hover);
+            box-shadow: var(--shadow);
+        }
+
+        .channel-info {
+            flex: 1;
+        }
+
+        .channel-name {
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .channel-meta {
+            font-size: 11px;
+            opacity: 0.8;
+            margin-top: 2px;
+        }
+
+        .delete-channel-btn {
+            background: none;
+            border: none;
+            color: inherit;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            opacity: 0.7;
+            transition: opacity 0.2s ease;
+        }
+
+        .delete-channel-btn:hover {
+            opacity: 1;
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .sidebar-actions {
+            padding: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .action-btn {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 10px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--accent-primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border-color);
+        }
+
+        /* Main Chat Area */
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-primary);
+        }
+
+        .chat-header {
+            padding: 20px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: var(--shadow);
+        }
+
+        .chat-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .chat-meta {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: var(--bg-primary);
+        }
+
+        .message {
+            margin-bottom: 16px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .message-user {
+            font-weight: 600;
+            color: var(--accent-primary);
+            margin-right: 10px;
+        }
+
+        .timestamp {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .message-content {
+            background: var(--bg-secondary);
+            padding: 12px 16px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow);
+            word-wrap: break-word;
+            line-height: 1.4;
+        }
+
+        .chat-input-area {
+            padding: 20px;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .chat-input-container {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        .message-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            font-size: 14px;
+            resize: none;
+            min-height: 44px;
+            max-height: 120px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: border-color 0.2s ease;
+        }
+
+        .message-input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+        }
+
+        .send-btn {
+            padding: 12px 24px;
+            background: var(--accent-primary);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            min-width: 80px;
+        }
+
+        .send-btn:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        .send-btn:disabled {
+            background: var(--text-secondary);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Modals */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-content {
+            background: var(--bg-secondary);
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border-color);
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .modal h2 {
+            margin-bottom: 10px;
+            color: var(--text-primary);
+            font-size: 20px;
+        }
+
+        .modal p {
+            margin-bottom: 20px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 14px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: border-color 0.2s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 14px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            cursor: pointer;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: var(--accent-primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border-color);
+        }
+
+        .close {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: color 0.2s ease;
+        }
+
+        .close:hover {
+            color: var(--text-primary);
         }
 
         /* Search Bar */
@@ -122,670 +484,104 @@
 
         .search-input {
             width: 100%;
-            padding: 10px 12px;
-            border: 2px solid var(--border-color);
+            padding: 10px 16px;
+            border: 1px solid var(--border-color);
             border-radius: 8px;
             font-size: 14px;
-            outline: none;
             background: var(--bg-primary);
             color: var(--text-primary);
-            transition: all 0.3s ease;
+            transition: border-color 0.2s ease;
         }
 
         .search-input:focus {
-            border-color: var(--accent-primary);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        }
-
-        .search-input::placeholder {
-            color: var(--text-secondary);
-        }
-
-        .channel-section {
-            margin-bottom: 25px;
-        }
-
-        .section-title {
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 12px;
-        }
-
-        .channel-item {
-            padding: 12px 16px;
-            margin-bottom: 4px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .channel-item:hover {
-            background: var(--bg-tertiary);
-        }
-
-        .channel-item.active {
-            background: var(--accent-primary);
-            color: white;
-        }
-
-        .channel-item.hidden {
-            display: none;
-        }
-
-        .channel-info {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .channel-name {
-            font-size: 14px;
-            font-weight: 500;
-        }
-
-        .channel-meta {
-            font-size: 11px;
-            opacity: 0.7;
-            margin-top: 2px;
-        }
-
-        .channel-badge {
-            font-size: 10px;
-            padding: 2px 6px;
-            border-radius: 4px;
-            background: var(--success-color);
-            color: white;
-        }
-
-        .channel-badge.private {
-            background: var(--danger-color);
-        }
-
-        .channel-badge.dm {
-            background: var(--accent-primary);
-        }
-
-        .delete-channel-btn {
-            background: var(--danger-color);
-            color: white;
-            border: none;
-            padding: 4px 8px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 10px;
-            transition: all 0.2s ease;
-        }
-
-        .delete-channel-btn:hover {
-            background: #dc2626;
-            transform: scale(1.1);
-        }
-
-        .action-buttons {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .action-btn {
-            padding: 10px;
-            background: var(--success-color);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .action-btn:hover {
-            transform: translateY(-1px);
-        }
-
-        .action-btn.secondary {
-            background: var(--warning-color);
-        }
-
-        /* Main Chat Area */
-        .chat-area {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .chat-header {
-            background: var(--bg-secondary);
-            border-bottom: 1px solid var(--border-color);
-            padding: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .chat-info {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .chat-title {
-            font-size: 20px;
-            font-weight: 700;
-            color: var(--text-primary);
-        }
-
-        .chat-meta {
-            font-size: 12px;
-            color: var(--text-secondary);
-            margin-top: 4px;
-        }
-
-        .theme-selector {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .theme-btn {
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border-color);
-            color: var(--text-primary);
-            padding: 8px 12px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 12px;
-            transition: all 0.3s ease;
-        }
-
-        .theme-btn:hover {
-            background: var(--accent-primary);
-            color: white;
-        }
-
-        .chat-messages {
-            flex: 1;
-            padding: 20px;
-            overflow-y: auto;
-            background: var(--bg-primary);
-        }
-
-        .message-wrapper {
-            margin-bottom: 16px;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .message-wrapper.new-message {
-            animation: slideIn 0.3s ease;
-        }
-
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .message-wrapper.self {
-            align-items: flex-end;
-        }
-
-        .message-wrapper.other {
-            align-items: flex-start;
-        }
-
-        .nickname {
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--text-secondary);
-            margin-bottom: 4px;
-            padding: 0 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .bubble {
-            max-width: 75%;
-            padding: 12px 16px;
-            border-radius: 18px;
-            word-wrap: break-word;
-            font-size: 14px;
-            line-height: 1.4;
-            box-shadow: var(--shadow);
-            position: relative;
-        }
-
-        .bubble.self {
-            background: linear-gradient(135deg, var(--accent-primary), var(--accent-hover));
-            color: white;
-        }
-
-        .bubble.other {
-            background: var(--bg-secondary);
-            color: var(--text-primary);
-            border: 1px solid var(--border-color);
-        }
-
-        .timestamp {
-            font-size: 10px;
-            opacity: 0.7;
-            margin-top: 4px;
-        }
-
-        .chat-input {
-            display: flex;
-            padding: 20px;
-            background: var(--bg-secondary);
-            border-top: 1px solid var(--border-color);
-            gap: 12px;
-        }
-
-        .chat-input input {
-            flex: 1;
-            padding: 14px 18px;
-            border: 2px solid var(--border-color);
-            border-radius: 12px;
             outline: none;
-            font-size: 14px;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            transition: all 0.3s ease;
-        }
-
-        .chat-input input:focus {
             border-color: var(--accent-primary);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
 
-        .chat-input button {
-            padding: 14px 24px;
-            background: linear-gradient(135deg, var(--accent-primary), var(--accent-hover));
-            border: none;
-            border-radius: 12px;
-            color: white;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            box-shadow: var(--shadow);
-        }
-
-        .chat-input button:hover:not(:disabled) {
-            transform: translateY(-1px);
-            box-shadow: var(--shadow-lg);
-        }
-
-        .chat-input button:disabled {
-            background: var(--text-secondary);
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        /* Modal Styles */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(4px);
-        }
-
-        .modal-content {
-            background: var(--bg-secondary);
-            margin: 5% auto;
-            padding: 30px;
-            border-radius: 16px;
-            width: 500px;
-            max-width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
-            box-shadow: var(--shadow-lg);
-            border: 1px solid var(--border-color);
-            animation: modalSlideIn 0.3s ease;
-        }
-
-        @keyframes modalSlideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-20px) scale(0.95);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0) scale(1);
-            }
-        }
-
-        .modal h2 {
-            color: var(--text-primary);
-            font-size: 24px;
-            margin-bottom: 8px;
-            font-weight: 700;
-        }
-
-        .modal p {
-            color: var(--text-secondary);
-            margin-bottom: 20px;
-            font-size: 14px;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        .modal input, .modal select {
-            width: 100%;
-            padding: 12px 16px;
-            border: 2px solid var(--border-color);
-            border-radius: 8px;
-            font-size: 14px;
-            outline: none;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            transition: all 0.3s ease;
-        }
-
-        .modal input:focus, .modal select:focus {
-            border-color: var(--accent-primary);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        }
-
-        .modal button {
-            background: linear-gradient(135deg, var(--accent-primary), var(--accent-hover));
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            margin-right: 10px;
-            transition: all 0.3s ease;
-            box-shadow: var(--shadow);
-        }
-
-        .modal button:hover:not(:disabled) {
-            transform: translateY(-1px);
-            box-shadow: var(--shadow-lg);
-        }
-
-        .modal button:disabled {
-            background: var(--text-secondary);
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .modal button.secondary {
-            background: var(--bg-tertiary);
-            color: var(--text-primary);
-            border: 1px solid var(--border-color);
-        }
-
-        .char-counter {
-            font-size: 12px;
-            color: var(--text-secondary);
-            margin-top: 4px;
-        }
-
-        .char-counter.warning {
-            color: var(--danger-color);
-        }
-
-        .code-display {
-            background: var(--bg-tertiary);
-            padding: 12px;
-            border-radius: 8px;
-            font-family: monospace;
-            font-size: 18px;
-            font-weight: bold;
-            text-align: center;
-            margin: 10px 0;
-            border: 2px dashed var(--border-color);
-        }
-
-        .custom-code-input {
-            margin-top: 10px;
-        }
-
-        .custom-code-input input {
-            font-family: monospace;
-            font-size: 16px;
-            text-align: center;
-            letter-spacing: 2px;
-        }
-
+        /* Error and Success Messages */
         .error-message {
-            background: #fef2f2;
-            color: #dc2626;
-            padding: 12px;
+            background: var(--danger-color);
+            color: white;
+            padding: 10px 16px;
             border-radius: 8px;
-            margin: 10px 0;
-            border: 1px solid #fecaca;
+            margin-bottom: 16px;
             font-size: 14px;
         }
 
         .success-message {
-            background: #f0fdf4;
-            color: #16a34a;
-            padding: 12px;
+            background: var(--success-color);
+            color: white;
+            padding: 10px 16px;
             border-radius: 8px;
-            margin: 10px 0;
-            border: 1px solid #bbf7d0;
+            margin-bottom: 16px;
             font-size: 14px;
         }
 
-        /* Scrollbar Styling */
-        .sidebar-content::-webkit-scrollbar,
-        .chat-messages::-webkit-scrollbar {
-            width: 6px;
+        /* Theme Toggle */
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            z-index: 100;
+            transition: all 0.2s ease;
         }
 
-        .sidebar-content::-webkit-scrollbar-track,
-        .chat-messages::-webkit-scrollbar-track {
+        .theme-toggle:hover {
             background: var(--bg-tertiary);
-            border-radius: 3px;
+            transform: translateY(-1px);
         }
 
-        .sidebar-content::-webkit-scrollbar-thumb,
-        .chat-messages::-webkit-scrollbar-thumb {
-            background: var(--text-secondary);
-            border-radius: 3px;
-        }
-
-        .sidebar-content::-webkit-scrollbar-thumb:hover,
-        .chat-messages::-webkit-scrollbar-thumb:hover {
-            background: var(--accent-primary);
-        }
-
-        /* Responsive */
+        /* Responsive Design */
         @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                left: -300px;
+                top: 0;
+                height: 100vh;
+                z-index: 100;
+                transition: left 0.3s ease;
+            }
+
+            .sidebar.open {
+                left: 0;
+            }
+
             .mobile-menu-btn {
                 display: block;
             }
 
-            .sidebar {
-                width: 100%;
-                position: fixed;
-                left: -100%;
-                z-index: 100;
-                transition: left 0.3s ease;
-            }
-            
-            .sidebar.open {
-                left: 0;
-            }
-            
             .chat-area {
                 margin-left: 0;
             }
         }
+
+        /* Character Counter */
+        .char-counter {
+            text-align: right;
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 5px;
+        }
+
+        .char-counter.warning {
+            color: var(--warning-color);
+        }
+
+        .char-counter.danger {
+            color: var(--danger-color);
+        }
     </style>
 </head>
-<body data-theme="light">
-    <!-- Mobile Menu Button -->
-    <button class="mobile-menu-btn" onclick="toggleSidebar()">☰ Menu</button>
-
-    <!-- Nickname Modal -->
-    <div id="nicknameModal" class="modal">
-        <div class="modal-content">
-            <h2>🌟 Welcome!</h2>
-            <p>Choose a nickname to join the conversation</p>
-            <div id="nicknameError" class="error-message" style="display: none;"></div>
-            <div class="form-group">
-                <input type="text" id="nicknameInput" placeholder="Enter your nickname..." maxlength="25" />
-                <div class="char-counter" id="charCounter">0/25 characters</div>
-            </div>
-            <button id="setNicknameBtn" onclick="setNickname()">Join Chat</button>
-        </div>
-    </div>
-
-    <!-- Create Channel Modal -->
-    <div id="createChannelModal" class="modal">
-        <div class="modal-content">
-            <h2>Create New Channel</h2>
-            <p>Set up your new chat channel</p>
-            <div id="createChannelError" class="error-message" style="display: none;"></div>
-            <div id="createChannelSuccess" class="success-message" style="display: none;"></div>
-            
-            <div class="form-group">
-                <label class="form-label">Channel Name</label>
-                <input type="text" id="channelNameInput" placeholder="Enter channel name..." maxlength="50" />
-                <div class="char-counter" id="nameCounter">0/50 characters</div>
-            </div>
-            
-            <div class="form-group">
-                <label class="form-label">Channel Type</label>
-                <select id="channelTypeSelect">
-                    <option value="public">🌍 Public - Anyone can join</option>
-                    <option value="private"> Private - Requires code to join</option>
-                </select>
-            </div>
-            
-            <div id="channelCodeDisplay" style="display: none;">
-                <label class="form-label">Channel Code</label>
-                <div class="form-group">
-                    <input type="text" id="customCodeInput" placeholder="Enter custom code (6 characters)..." maxlength="6" class="custom-code-input" />
-                    <div style="margin-top: 10px;">
-                        <button type="button" onclick="generateRandomCode()" style="font-size: 12px; padding: 8px 12px;">🎲 Generate Random</button>
-                    </div>
-                </div>
-                <div class="code-display" id="generatedCode"></div>
-            </div>
-            
-            <div class="form-group">
-                <label class="form-label">Message Lifetime</label>
-                <select id="messageLifetimeSelect">
-                    <option value="60">1 minute</option>
-                    <option value="300" selected>5 minutes</option>
-                    <option value="900">15 minutes</option>
-                    <option value="1800">30 minutes</option>
-                    <option value="3600">1 hour</option>
-                    <option value="7200">2 hours</option>
-                    <option value="21600">6 hours</option>
-                    <option value="43200">12 hours</option>
-                    <option value="86400">24 hours</option>
-                </select>
-            </div>
-            
-            <button id="createChannelBtn" onclick="createChannel()">Create Channel</button>
-            <button class="secondary" onclick="closeModal('createChannelModal')">Cancel</button>
-        </div>
-    </div>
-
-    <!-- Join Private Channel Modal -->
-    <div id="joinChannelModal" class="modal">
-        <div class="modal-content">
-            <h2>Join Private Channel</h2>
-            <p>Enter the channel code to join a private channel</p>
-            <div id="joinChannelError" class="error-message" style="display: none;"></div>
-            
-            <div class="form-group">
-                <label class="form-label">Channel Code</label>
-                <input type="text" id="channelCodeInput" placeholder="Enter 6-character code..." maxlength="6" />
-            </div>
-            
-            <button id="joinChannelBtn" onclick="joinPrivateChannel()">Join Channel</button>
-            <button class="secondary" onclick="closeModal('joinChannelModal')">Cancel</button>
-        </div>
-    </div>
-
-    <!-- Create Direct Message Modal -->
-    <div id="createDmModal" class="modal">
-        <div class="modal-content">
-            <h2>💬 Start Direct Message</h2>
-            <p>Enter the nickname of the person you want to message</p>
-            <div id="createDmError" class="error-message" style="display: none;"></div>
-            <div id="createDmSuccess" class="success-message" style="display: none;"></div>
-            
-            <div class="form-group">
-                <label class="form-label">Their Nickname</label>
-                <input type="text" id="targetNicknameInput" placeholder="Enter their nickname..." maxlength="25" />
-            </div>
-            
-            <button id="createDmBtn" onclick="createDirectMessage()">Start Chat</button>
-            <button class="secondary" onclick="closeModal('createDmModal')">Cancel</button>
-        </div>
-    </div>
-
-    <!-- User Search Modal -->
-    <div id="userSearchModal" class="modal">
-        <div class="modal-content">
-            <h2>👥 Find Users</h2>
-            <p>Search for users to start a direct message with</p>
-            
-            <div class="form-group">
-                <label class="form-label">Search Users</label>
-                <input type="text" id="userSearchInput" placeholder="Type to search users..." />
-            </div>
-            
-            <div id="userSearchResults" style="max-height: 300px; overflow-y: auto;">
-                <!-- Users will be populated here -->
-            </div>
-            
-            <button class="secondary" onclick="closeModal('userSearchModal')">Close</button>
-        </div>
-    </div>
-
-    <!-- Change Username Modal -->
-    <div id="changeUsernameModal" class="modal">
-        <div class="modal-content">
-            <h2>✏️ Change Username</h2>
-            <p>Enter a new nickname for your account</p>
-            <div id="changeUsernameError" class="error-message" style="display: none;"></div>
-            <div id="changeUsernameSuccess" class="success-message" style="display: none;"></div>
-            
-            <div class="form-group">
-                <label class="form-label">New Nickname</label>
-                <input type="text" id="newUsernameInput" placeholder="Enter new nickname..." maxlength="25" />
-                <div class="char-counter" id="newUsernameCounter">0/25 characters</div>
-            </div>
-            
-            <button id="changeUsernameBtn" onclick="changeUsername()">Change Username</button>
-            <button class="secondary" onclick="closeModal('changeUsernameModal')">Cancel</button>
-        </div>
-    </div>
-
-    <!-- Main App -->
+<body data-theme="dark">
     <div class="app-container">
+        <!-- Mobile Menu Button -->
+        <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+
         <!-- Sidebar -->
         <div class="sidebar" id="sidebar">
             <div class="sidebar-header">
@@ -804,81 +600,215 @@
                     ">✏️</button>
                 </div>
             </div>
-            
+
             <div class="sidebar-content">
-                <!-- Search Bar -->
+                <!-- Channel Search -->
                 <div class="search-container">
-                    <input type="text" id="channelSearch" class="search-input" placeholder="🔍 Search channels..." />
+                    <input type="text" id="channelSearch" class="search-input" placeholder="�� Search channels...">
                 </div>
-                
-                <div class="channel-section">
-                    <div class="section-title">Channels</div>
-                    <div id="channelList">
-                        <!-- Channels will be populated here -->
-                    </div>
+
+                <!-- Channels Section -->
+                <div class="sidebar-section">
+                    <h3>Channels</h3>
+                    <div id="channelList"></div>
                 </div>
-                
-                <div class="channel-section">
-                    <div class="section-title">Direct Messages</div>
-                    <div id="dmList">
-                        <!-- DM channels will be populated here -->
-                    </div>
+
+                <!-- Direct Messages Section -->
+                <div class="sidebar-section">
+                    <h3>Direct Messages</h3>
+                    <div id="dmList"></div>
                 </div>
-                
-                <div class="action-buttons">
-                    <button class="action-btn" onclick="openModal('createChannelModal')">
-                        ➕ Create Channel
-                    </button>
-                    <button class="action-btn secondary" onclick="openModal('joinChannelModal')">
-                        🔐 Join Private Channel
-                    </button>
-                    <button class="action-btn" onclick="openModal('createDmModal')" style="background: var(--accent-primary);">
-                        💬 Direct Message
-                    </button>
-                    <button class="action-btn" onclick="openModal('userSearchModal')" style="background: var(--text-secondary);">
-                        👥 Find Users
-                    </button>
-                </div>
+            </div>
+
+            <div class="sidebar-actions">
+                <button class="action-btn btn-primary" onclick="openCreateChannelModal()">
+                    ➕ Create Channel
+                </button>
+                <button class="action-btn btn-secondary" onclick="openJoinChannelModal()">
+                    🔐 Join Private
+                </button>
+                <button class="action-btn btn-secondary" onclick="openDirectMessageModal()">
+                    💬 New Message
+                </button>
             </div>
         </div>
 
         <!-- Main Chat Area -->
         <div class="chat-area">
             <div class="chat-header">
-                <div class="chat-info">
-                    <div class="chat-title" id="chatTitle">Select a channel</div>
-                    <div class="chat-meta" id="chatMeta">Choose a channel from the sidebar to start chatting</div>
-                </div>
-                <div class="theme-selector">
-                    <button class="theme-btn" onclick="setTheme('light')">☀️ Light</button>
-                    <button class="theme-btn" onclick="setTheme('dark')">🌙 Dark</button>
-                    <button class="theme-btn" onclick="setTheme('blue')">💙 Blue</button>
-                </div>
+                <div class="chat-title" id="chatTitle">Welcome to TMAchat!</div>
+                <div class="chat-meta" id="chatMeta">Select a channel to start chatting</div>
             </div>
-            
+
             <div class="chat-messages" id="chatMessages">
-                <div style="text-align: center; color: var(--text-secondary); margin-top: 50px;">
-                    <h3>Welcome to Multi-Chat!</h3>
-                    <p>Select a channel to start chatting or create your own</p>
+                <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                    <h3>�� Welcome to TMAchat!</h3>
+                    <p>Select a channel from the sidebar to start chatting</p>
                 </div>
             </div>
+
+            <div class="chat-input-area">
+                <div class="chat-input-container">
+                    <textarea 
+                        id="messageInput" 
+                        class="message-input" 
+                        placeholder="Type your message here..."
+                        rows="1"
+                        maxlength="500"
+                    ></textarea>
+                    <button id="sendBtn" class="send-btn" onclick="sendMessage()">Send</button>
+                </div>
+                <div class="char-counter" id="charCounter">0/500</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Theme Toggle -->
+    <div class="theme-toggle" onclick="toggleTheme()">
+        🌙
+    </div>
+
+    <!-- Nickname Modal -->
+    <div id="nicknameModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('nicknameModal')">&times;</span>
+            <h2>�� Welcome to TMAchat!</h2>
+            <p>Please enter a nickname to get started. This will be your username in the chat.</p>
+            <div id="nicknameError" class="error-message" style="display: none;"></div>
+            <div id="nicknameSuccess" class="success-message" style="display: none;"></div>
             
-            <div class="chat-input">
-                <input type="text" id="messageInput" placeholder="Type your message..." disabled />
-                <button id="sendBtn" onclick="sendMessage()" disabled>Send</button>
+            <div class="form-group">
+                <label for="nicknameInput">Nickname:</label>
+                <input type="text" id="nicknameInput" class="form-input" placeholder="Enter your nickname" maxlength="20">
+            </div>
+            
+            <div class="modal-actions">
+                <button class="btn btn-primary" onclick="setNickname()">Set Nickname</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Channel Modal -->
+    <div id="createChannelModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('createChannelModal')">&times;</span>
+            <h2>➕ Create New Channel</h2>
+            <p>Create a new channel for people to join and chat together.</p>
+            <div id="createChannelError" class="error-message" style="display: none;"></div>
+            <div id="createChannelSuccess" class="success-message" style="display: none;"></div>
+            
+            <div class="form-group">
+                <label for="channelNameInput">Channel Name:</label>
+                <input type="text" id="channelNameInput" class="form-input" placeholder="Enter channel name" maxlength="30">
+            </div>
+            
+            <div class="form-group">
+                <label for="channelTypeSelect">Channel Type:</label>
+                <select id="channelTypeSelect" class="form-select">
+                    <option value="public">Public</option>
+                    <option value="private">Private</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="messageLifetimeSelect">Message Lifetime:</label>
+                <select id="messageLifetimeSelect" class="form-select">
+                    <option value="300">5 minutes</option>
+                    <option value="900">15 minutes</option>
+                    <option value="1800">30 minutes</option>
+                    <option value="3600">1 hour</option>
+                    <option value="7200">2 hours</option>
+                </select>
+            </div>
+            
+            <div class="form-group" id="customCodeGroup" style="display: none;">
+                <label for="customCodeInput">Custom Code (optional):</label>
+                <input type="text" id="customCodeInput" class="form-input" placeholder="Leave empty for auto-generated code" maxlength="10">
+            </div>
+            
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal('createChannelModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="createChannel()">Create Channel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Join Private Channel Modal -->
+    <div id="joinChannelModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('joinChannelModal')">&times;</span>
+            <h2>🔐 Join Private Channel</h2>
+            <p>Enter the channel code to join a private channel.</p>
+            <div id="joinChannelError" class="error-message" style="display: none;"></div>
+            <div id="joinChannelSuccess" class="success-message" style="display: none;"></div>
+            
+            <div class="form-group">
+                <label for="joinCodeInput">Channel Code:</label>
+                <input type="text" id="joinCodeInput" class="form-input" placeholder="Enter the 6-digit code" maxlength="10">
+            </div>
+            
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal('joinChannelModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="joinPrivateChannel()">Join Channel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Direct Message Modal -->
+    <div id="directMessageModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('directMessageModal')">&times;</span>
+            <h2>💬 Send Direct Message</h2>
+            <p>Enter someone's nickname to start a private conversation.</p>
+            <div id="directMessageError" class="error-message" style="display: none;"></div>
+            <div id="directMessageSuccess" class="success-message" style="display: none;"></div>
+            
+            <div class="form-group">
+                <label for="targetNicknameInput">User Nickname:</label>
+                <input type="text" id="targetNicknameInput" class="form-input" placeholder="Enter the user's nickname" maxlength="20">
+            </div>
+            
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal('directMessageModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="createDirectMessage()">Start Chat</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Change Username Modal -->
+    <div id="changeUsernameModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('changeUsernameModal')">&times;</span>
+            <h2>✏️ Change Username</h2>
+            <p>Enter a new nickname for your account</p>
+            <div id="changeUsernameError" class="error-message" style="display: none;"></div>
+            <div id="changeUsernameSuccess" class="success-message" style="display: none;"></div>
+            
+            <div class="form-group">
+                <label for="newNicknameInput">New Nickname:</label>
+                <input type="text" id="newNicknameInput" class="form-input" placeholder="Enter new nickname" maxlength="20">
+            </div>
+            
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal('changeUsernameModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="changeUsername()">Change Username</button>
             </div>
         </div>
     </div>
 
     <script>
+        // Global variables
         let currentUser = {
             id: localStorage.getItem('chat-user-id') || Math.random().toString(36).substr(2, 9),
             nickname: null
         };
         let currentChannel = null;
+        let allChannels = [];
         let messageInterval = null;
         let lastMessageCount = 0;
-        let allChannels = []; // Store all channels for search functionality
+
+        // Save user ID to localStorage
+        localStorage.setItem('chat-user-id', currentUser.id);
 
         // Initialize app
         document.addEventListener('DOMContentLoaded', function() {
@@ -886,10 +816,12 @@
             checkExistingUser();
             
             loadChannels();
+            loadDMChannels();
             
             // Setup event listeners
             document.getElementById('messageInput').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
                     sendMessage();
                 }
             });
@@ -899,171 +831,55 @@
                 filterChannels(e.target.value);
             });
 
-            // Character counters
-            document.getElementById('nicknameInput').addEventListener('input', function(e) {
-                const counter = document.getElementById('charCounter');
-                const length = e.target.value.length;
-                counter.textContent = `${length}/25 characters`;
-                counter.className = length > 20 ? 'char-counter warning' : 'char-counter';
-            });
-
-            document.getElementById('channelNameInput').addEventListener('input', function(e) {
-                const counter = document.getElementById('nameCounter');
-                const length = e.target.value.length;
-                counter.textContent = `${length}/50 characters`;
-                counter.className = length > 45 ? 'char-counter warning' : 'char-counter';
+            // Character counter
+            document.getElementById('messageInput').addEventListener('input', function(e) {
+                updateCharacterCounter(e.target.value.length);
             });
 
             // Channel type change handler
             document.getElementById('channelTypeSelect').addEventListener('change', function(e) {
-                const codeDisplay = document.getElementById('channelCodeDisplay');
+                const customCodeGroup = document.getElementById('customCodeGroup');
                 if (e.target.value === 'private') {
-                    codeDisplay.style.display = 'block';
-                    generateRandomCode();
+                    customCodeGroup.style.display = 'block';
                 } else {
-                    codeDisplay.style.display = 'none';
+                    customCodeGroup.style.display = 'none';
                 }
             });
 
-            // Custom code input handler
-            document.getElementById('customCodeInput').addEventListener('input', function(e) {
-                const value = e.target.value.toUpperCase();
-                e.target.value = value;
-                document.getElementById('generatedCode').textContent = value;
-            });
-
-            // Character counter for new username input
-            document.getElementById('newUsernameInput').addEventListener('input', function(e) {
-                const counter = document.getElementById('newUsernameCounter');
-                const length = e.target.value.length;
-                counter.textContent = `${length}/25 characters`;
-                counter.className = length > 20 ? 'char-counter warning' : 'char-counter';
-            });
-
-            // User search input handler
-            document.getElementById('userSearchInput').addEventListener('input', function(e) {
-                const query = e.target.value.trim();
-                if (query === '') {
-                    loadAllUsers(); // Show all users when search is empty
-                } else {
-                    searchUsers(query); // Search users as you type
-                }
+            // Change username button event listener
+            document.getElementById('changeUsernameBtn').addEventListener('click', function() {
+                openChangeUsernameModal();
             });
         });
 
-        // Check if user already has a nickname stored
+        // Check if user already has a nickname
         async function checkExistingUser() {
             try {
-                const response = await fetch(`/get_user?userId=${currentUser.id}`);
+                const response = await fetch('/get_nickname', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        userId: currentUser.id
+                    })
+                });
+
                 const data = await response.json();
-                
-                if (data.success && data.user) {
-                    // User already has a nickname, use it
-                    currentUser.nickname = data.user.nickname;
-                    document.getElementById('userInfo').textContent = `Welcome back ${data.user.nickname}!`;
-                    
-                    // Don't show nickname modal if user already has one
-                    closeModal('nicknameModal');
-                    
-                    // Enable message input if we're in a channel
-                    if (currentChannel) {
-                        document.getElementById('messageInput').disabled = false;
-                        document.getElementById('sendBtn').disabled = false;
-                    }
+                if (data.success) {
+                    currentUser.nickname = data.nickname;
+                    updateUserInfo();
+                    hideModal('nicknameModal');
                 } else {
-                    // New user, show nickname modal
-                    openModal('nicknameModal');
+                    showModal('nicknameModal');
                 }
             } catch (error) {
                 console.error('Error checking existing user:', error);
-                // Fallback: show nickname modal
-                openModal('nicknameModal');
+                showModal('nicknameModal');
             }
         }
 
-        // Utility functions
-        function generateChannelCode() {
-            return Math.random().toString(36).substr(2, 6).toUpperCase();
-        }
-
-        function generateRandomCode() {
-            const code = generateChannelCode();
-            document.getElementById('customCodeInput').value = code;
-            document.getElementById('generatedCode').textContent = code;
-        }
-
-        function formatTime(timestamp) {
-            const date = new Date(timestamp * 1000);
-            return date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-        }
-
-        function showError(elementId, message) {
-            const element = document.getElementById(elementId);
-            element.textContent = message;
-            element.style.display = 'block';
-            setTimeout(() => {
-                element.style.display = 'none';
-            }, 5000);
-        }
-
-        function showSuccess(elementId, message) {
-            const element = document.getElementById(elementId);
-            element.textContent = message;
-            element.style.display = 'block';
-            setTimeout(() => {
-                element.style.display = 'none';
-            }, 3000);
-        }
-
-        // Search functionality
-        function filterChannels(searchTerm) {
-            const channelItems = document.querySelectorAll('.channel-item');
-            const searchLower = searchTerm.toLowerCase();
-            
-            channelItems.forEach(item => {
-                const channelName = item.querySelector('.channel-name').textContent.toLowerCase();
-                const channelMeta = item.querySelector('.channel-meta').textContent.toLowerCase();
-                
-                if (channelName.includes(searchLower) || channelMeta.includes(searchLower)) {
-                    item.classList.remove('hidden');
-                } else {
-                    item.classList.add('hidden');
-                }
-            });
-        }
-
-        // Modal functions
-        function openModal(modalId) {
-            document.getElementById(modalId).style.display = 'block';
-            
-            // If opening user search modal, load all users
-            if (modalId === 'userSearchModal') {
-                loadAllUsers();
-            }
-        }
-
-        function closeModal(modalId) {
-            document.getElementById(modalId).style.display = 'none';
-        }
-
-        // Theme functions
-        function setTheme(theme) {
-            document.body.setAttribute('data-theme', theme);
-            localStorage.setItem('chat-theme', theme);
-        }
-
-        // Load saved theme
-        const savedTheme = localStorage.getItem('chat-theme');
-        if (savedTheme) {
-            setTheme(savedTheme);
-        }
-
-        // Mobile sidebar toggle
-        function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('open');
-        }
-
-        // Nickname functions
+        // Set nickname
         async function setNickname() {
             const nickname = document.getElementById('nicknameInput').value.trim();
             
@@ -1085,66 +901,30 @@
                 });
 
                 const data = await response.json();
-
-                if (data.error) {
-                    if (data.error === "Nickname already taken") {
-                        showError('nicknameError', 'Nickname already taken. Please try a different one.');
-                        // Clear the input to let them try again
-                        document.getElementById('nicknameInput').value = '';
-                        document.getElementById('charCounter').textContent = '0/25 characters';
-                        document.getElementById('charCounter').className = 'char-counter';
-                    } else {
-                        showError('nicknameError', data.error);
-                    }
-                    return;
+                if (data.success) {
+                    currentUser.nickname = data.nickname;
+                    updateUserInfo();
+                    hideModal('nicknameModal');
+                    showSuccess('nicknameSuccess', 'Nickname set successfully!');
+                    
+                    // Reload channels to show new user
+                    loadChannels();
+                    loadDMChannels();
+                } else {
+                    showError('nicknameError', data.error);
                 }
-
-                // Use the nickname from the response
-                currentUser.nickname = data.nickname;
-                
-                // Save user ID to localStorage so it persists
-                localStorage.setItem('chat-user-id', currentUser.id);
-                
-                document.getElementById('userInfo').textContent = `Welcome ${data.nickname}!`;
-                closeModal('nicknameModal');
-                
-                // Enable message input for main channel
-                if (currentChannel) {
-                    document.getElementById('messageInput').disabled = false;
-                    document.getElementById('sendBtn').disabled = false;
-                }
-
             } catch (error) {
                 console.error('Error setting nickname:', error);
-                showError('nicknameError', 'Failed to set nickname. Please try again.');
+                showError('nicknameError', 'Failed to set nickname');
             }
         }
 
-        // Function to open change username modal
-        function openChangeUsernameModal() {
-            // Pre-fill current username
-            document.getElementById('newUsernameInput').value = currentUser.nickname || '';
-            
-            // Update character counter
-            const counter = document.getElementById('newUsernameCounter');
-            const length = currentUser.nickname ? currentUser.nickname.length : 0;
-            counter.textContent = `${length}/25 characters`;
-            counter.className = length > 20 ? 'char-counter warning' : 'char-counter';
-            
-            openModal('changeUsernameModal');
-        }
-
-        // Function to change username
+        // Change username
         async function changeUsername() {
-            const newUsername = document.getElementById('newUsernameInput').value.trim();
+            const newNickname = document.getElementById('newNicknameInput').value.trim();
             
-            if (!newUsername) {
+            if (!newNickname) {
                 showError('changeUsernameError', 'Please enter a new nickname');
-                return;
-            }
-
-            if (newUsername === currentUser.nickname) {
-                showError('changeUsernameError', 'That\'s already your current nickname');
                 return;
             }
 
@@ -1156,225 +936,76 @@
                     },
                     body: JSON.stringify({
                         userId: currentUser.id,
-                        nickname: newUsername
+                        nickname: newNickname
                     })
                 });
 
                 const data = await response.json();
-
-                if (data.error) {
-                    if (data.error === "Nickname already taken") {
-                        showError('changeUsernameError', 'Nickname already taken. Please try a different one.');
-                        // Clear the input to let them try again
-                        document.getElementById('newUsernameInput').value = '';
-                        document.getElementById('newUsernameCounter').textContent = '0/25 characters';
-                        document.getElementById('newUsernameCounter').className = 'char-counter';
-                    } else {
-                        showError('changeUsernameError', data.error);
-                    }
-                    return;
+                if (data.success) {
+                    currentUser.nickname = data.nickname;
+                    updateUserInfo();
+                    hideModal('changeUsernameModal');
+                    showSuccess('changeUsernameSuccess', 'Username changed successfully!');
+                    
+                    // Reload channels to show updated user
+                    loadChannels();
+                    loadDMChannels();
+                } else {
+                    showError('changeUsernameError', data.error);
                 }
-
-                // Update the user's nickname
-                currentUser.nickname = data.nickname;
-                
-                // Update the display
-                document.getElementById('userInfo').textContent = `Welcome ${data.nickname}!`;
-                
-                // Show success message
-                showSuccess('changeUsernameSuccess', 'Username changed successfully!');
-                
-                // Close modal after a short delay
-                setTimeout(() => {
-                    closeModal('changeUsernameModal');
-                }, 1500);
-
             } catch (error) {
                 console.error('Error changing username:', error);
-                showError('changeUsernameError', 'Failed to change username. Please try again.');
+                showError('changeUsernameError', 'Failed to change username');
             }
         }
 
-        // User search functions
-        async function loadAllUsers() {
+        // Update user info display
+        function updateUserInfo() {
+            const userInfo = document.getElementById('userInfo');
+            if (currentUser.nickname) {
+                userInfo.textContent = `Welcome, ${currentUser.nickname}!`;
+                document.getElementById('changeUsernameBtn').style.display = 'block';
+            } else {
+                userInfo.textContent = 'Welcome! Set your nickname to get started';
+                document.getElementById('changeUsernameBtn').style.display = 'none';
+            }
+        }
+
+        // Load DM channels
+        async function loadDMChannels() {
             try {
-                const response = await fetch('/search_users');
-                const data = await response.json();
-                
-                displayUserSearchResults(data.users);
-            } catch (error) {
-                console.error('Error loading users:', error);
-            }
-        }
-
-        async function searchUsers(query) {
-            try {
-                const response = await fetch(`/search_users?query=${encodeURIComponent(query)}`);
-                const data = await response.json();
-                
-                displayUserSearchResults(data.users);
-            } catch (error) {
-                console.error('Error searching users:', error);
-            }
-        }
-
-        function displayUserSearchResults(users) {
-            const resultsContainer = document.getElementById('userSearchResults');
-            
-            if (users.length === 0) {
-                resultsContainer.innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 20px;">No users found</div>';
-                return;
-            }
-            
-            resultsContainer.innerHTML = '';
-            
-            users.forEach(user => {
-                if (user.userId === currentUser.id) return; // Don't show current user
-                
-                const userItem = document.createElement('div');
-                userItem.style.cssText = `
-                    padding: 12px;
-                    border: 1px solid var(--border-color);
-                    border-radius: 8px;
-                    margin-bottom: 8px;
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                    background: var(--bg-primary);
-                `;
-                
-                userItem.onmouseenter = function() {
-                    this.style.background = 'var(--bg-tertiary)';
-                };
-                
-                userItem.onmouseleave = function() {
-                    this.style.background = 'var(--bg-primary)';
-                };
-                
-                userItem.onclick = function() {
-                    // Start DM with this user
-                    startDmWithUser(user.nickname);
-                };
-                
-                userItem.innerHTML = `
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <div style="font-weight: 600; color: var(--text-primary);">${user.nickname}</div>
-                            <div style="font-size: 12px; color: var(--text-secondary);">Click to start DM</div>
-                        </div>
-                        <button onclick="startDmWithUser('${user.nickname}')" style="
-                            background: var(--accent-primary);
-                            color: white;
-                            border: none;
-                            padding: 6px 12px;
-                            border-radius: 6px;
-                            cursor: pointer;
-                            font-size: 12px;
-                        ">💬</button>
-                    </div>
-                `;
-                
-                resultsContainer.appendChild(userItem);
-            });
-        }
-
-        function startDmWithUser(nickname) {
-            // Close user search modal
-            closeModal('userSearchModal');
-            
-            // Pre-fill the DM modal with the selected user
-            document.getElementById('targetNicknameInput').value = nickname;
-            
-            // Open the DM creation modal
-            openModal('createDmModal');
-        }
-
-        // Direct Message functions
-        async function createDirectMessage() {
-            const targetNickname = document.getElementById('targetNicknameInput').value.trim();
-            
-            if (!targetNickname) {
-                showError('createDmError', 'Please enter a nickname');
-                return;
-            }
-
-            if (!currentUser.nickname) {
-                showError('createDmError', 'Please set a nickname first');
-                return;
-            }
-
-            try {
-                const response = await fetch('/create_dm', {
+                const response = await fetch('/get_dm_channels', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        userId: currentUser.id,
-                        targetNickname: targetNickname
+                        userId: currentUser.id
                     })
                 });
 
                 const data = await response.json();
+                if (data.success) {
+                    const dmList = document.getElementById('dmList');
+                    dmList.innerHTML = '';
 
-                if (data.error) {
-                    showError('createDmError', data.error);
-                    return;
+                    data.channels.forEach(dm => {
+                        const dmItem = document.createElement('div');
+                        dmItem.className = 'channel-item';
+                        dmItem.onclick = () => joinChannel(dm.id);
+                        
+                        dmItem.innerHTML = `
+                            <div class="channel-info">
+                                <div class="channel-name">${dm.name}</div>
+                                <div class="channel-meta">Direct Message</div>
+                            </div>
+                            <button class="delete-channel-btn" onclick="deleteChannel('${dm.id}', event)">🗑️</button>
+                        `;
+
+                        dmList.appendChild(dmItem);
+                    });
+
                 }
-
-                showSuccess('createDmSuccess', 'Direct message created!');
-                closeModal('createDmModal');
-                
-                // Clear form
-                document.getElementById('targetNicknameInput').value = '';
-                
-                // Reload channels and DMs
-                loadChannels();
-                loadDmChannels();
-
-            } catch (error) {
-                console.error('Error creating DM:', error);
-                showError('createDmError', 'Failed to create direct message. Please try again.');
-            }
-        }
-
-        async function loadDmChannels() {
-            try {
-                const response = await fetch(`/get_dm_channels?userId=${currentUser.id}`);
-                const data = await response.json();
-
-                if (data.error) {
-                    console.error('Error loading DM channels:', data.error);
-                    return;
-                }
-
-                const dmList = document.getElementById('dmList');
-                dmList.innerHTML = '';
-
-                if (data.dm_channels.length === 0) {
-                    dmList.innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 20px; font-size: 12px;">No direct messages yet</div>';
-                    return;
-                }
-
-                data.dm_channels.forEach(dm => {
-                    const dmItem = document.createElement('div');
-                    dmItem.className = `channel-item ${currentChannel === dm.id ? 'active' : ''}`;
-                    dmItem.onclick = () => joinChannel(dm.id);
-
-                    dmItem.innerHTML = `
-                        <div class="channel-info">
-                            <div class="channel-name">${dm.name}</div>
-                            <div class="channel-meta">${dm.message_count} messages</div>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <div class="channel-badge dm">💬</div>
-
-                <button class="delete-channel-btn" onclick="deleteChannel('${dm.id}', event)">🗑️</button>
-                        </div>
-                    `;
-
-                    dmList.appendChild(dmItem);
-                });
-
             } catch (error) {
                 console.error('Error loading DM channels:', error);
             }
@@ -1390,106 +1021,46 @@
                 channelList.innerHTML = '';
 
                 allChannels.forEach(channel => {
-                    const channelItem = document.createElement('div');
-                    channelItem.className = `channel-item ${currentChannel === channel.id ? 'active' : ''}`;
-                    channelItem.onclick = () => joinChannel(channel.id);
+                    if (channel.type !== 'dm') {  // Don't show DM channels in main list
+                        const channelItem = document.createElement('div');
+                        channelItem.className = 'channel-item';
+                        channelItem.onclick = () => joinChannel(channel.id);
+                        
+                        channelItem.innerHTML = `
+                            <div class="channel-info">
+                                <div class="channel-name">${channel.name}</div>
+                                <div class="channel-meta">${channel.type} • ${channel.members.length} members</div>
+                            </div>
+                            ${!channel.is_system ? `<button class="delete-channel-btn" onclick="deleteChannel('${channel.id}', event)">🗑️</button>` : ''}
+                        `;
 
-                    // Add delete button for non-system channels
-                    const deleteButton = !channel.is_system ? 
-                        `<button class="delete-channel-btn" onclick="deleteChannel('${channel.id}', event)">��️</button>` : '';
-
-                    channelItem.innerHTML = `
-                        <div class="channel-info">
-                            <div class="channel-name">${channel.name}</div>
-                            <div class="channel-meta">${channel.message_count} messages</div>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <div class="channel-badge ${channel.type}">${channel.type === 'private' ? '🔒' : '🌍'}</div>
-                            ${deleteButton}
-                        </div>
-                    `;
-
-                    channelList.appendChild(channelItem);
-                });
-
-                // Auto-select main channel if no channel is selected
-                if (!currentChannel && allChannels.length > 0) {
-                    const mainChannel = allChannels.find(c => c.id === 'main');
-                    if (mainChannel) {
-                        joinChannel('main');
+                        channelList.appendChild(channelItem);
                     }
-                }
-
-                // Also load DM channels
-                loadDmChannels();
+                });
 
             } catch (error) {
                 console.error('Error loading channels:', error);
             }
         }
 
-        async function createChannel() {
-            const name = document.getElementById('channelNameInput').value.trim();
-            const type = document.getElementById('channelTypeSelect').value;
-            const messageLifetime = parseInt(document.getElementById('messageLifetimeSelect').value);
-            const customCode = document.getElementById('customCodeInput').value.trim();
-
-            if (!name) {
-                showError('createChannelError', 'Please enter a channel name');
-                return;
-            }
-
-            if (!currentUser.nickname) {
-                showError('createChannelError', 'Please set a nickname first');
-                return;
-            }
-
-            if (type === 'private' && (!customCode || customCode.length !== 6)) {
-                showError('createChannelError', 'Please enter a 6-character code for private channels');
-                return;
-            }
-
-            try {
-                const response = await fetch('/create_channel', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        name: name,
-                        type: type,
-                        messageLifetime: messageLifetime,
-                        userId: currentUser.id,
-                        customCode: customCode
-                    })
-                });
-
-                const data = await response.json();
-
-                if (data.error) {
-                    showError('createChannelError', data.error);
-                    return;
+        // Filter channels
+        function filterChannels(query) {
+            const channelItems = document.querySelectorAll('#channelList .channel-item');
+            const dmItems = document.querySelectorAll('#dmList .channel-item');
+            
+            const allItems = [...channelItems, ...dmItems];
+            
+            allItems.forEach(item => {
+                const channelName = item.querySelector('.channel-name').textContent.toLowerCase();
+                if (channelName.includes(query.toLowerCase())) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
                 }
-
-                showSuccess('createChannelSuccess', 'Channel created successfully!');
-                closeModal('createChannelModal');
-                
-                // Clear form
-                document.getElementById('channelNameInput').value = '';
-                document.getElementById('channelTypeSelect').value = 'public';
-                document.getElementById('messageLifetimeSelect').value = '300';
-                document.getElementById('channelCodeDisplay').style.display = 'none';
-                document.getElementById('customCodeInput').value = '';
-                
-                // Reload channels
-                loadChannels();
-
-            } catch (error) {
-                console.error('Error creating channel:', error);
-                showError('createChannelError', 'Failed to create channel. Please try again.');
-            }
+            });
         }
 
+        // Join channel
         async function joinChannel(channelId) {
             try {
                 const response = await fetch('/join_channel', {
@@ -1506,184 +1077,101 @@
 
                 const data = await response.json();
 
-                if (data.error) {
-                    showError('joinChannelError', data.error);
-                    return;
-                }
-
-                currentChannel = channelId;
-                document.getElementById('chatTitle').textContent = data.channel.name;
-                document.getElementById('chatMeta').textContent = `Channel type: ${data.channel.type}`;
-                
-                // Update sidebar active state - IMPROVED VERSION
-                document.querySelectorAll('.channel-item').forEach(item => {
-                    item.classList.remove('active');
-                });
-                
-                // Find and activate the clicked channel item by matching channel ID
-                const channelItems = document.querySelectorAll('.channel-item');
-                channelItems.forEach((item, index) => {
-                    if (allChannels[index] && allChannels[index].id === channelId) {
-                        item.classList.add('active');
+                if (data.success) {
+                    // Stop previous message polling
+                    if (messageInterval) {
+                        clearInterval(messageInterval);
                     }
-                });
-                
-                // Enable message input if user has nickname
-                if (currentUser.nickname) {
-                    document.getElementById('messageInput').disabled = false;
-                    document.getElementById('sendBtn').disabled = false;
+
+                    currentChannel = channelId;
+                    document.getElementById('chatTitle').textContent = data.channel.name;
+                    document.getElementById('chatMeta').textContent = `Channel type: ${data.channel.type}`;
+                    
+                    // Update sidebar active state - IMPROVED VERSION
+                    document.querySelectorAll('.channel-item').forEach(item => {
+                        item.classList.remove('active');
+                    });
+                    
+                    // Find and activate the clicked channel item by matching channel ID
+                    const channelItems = document.querySelectorAll('.channel-item');
+                    for (let item of channelItems) {
+                        if (item.onclick && item.onclick.toString().includes(channelId)) {
+                            item.classList.add('active');
+                            break;
+                        }
+                    }
+
+                    // Load messages immediately
+                    await loadMessages(channelId);
+                    
+                    // Start message polling
+                    startMessagePolling(channelId);
+                    
+                    // Clear input and focus
+                    document.getElementById('messageInput').value = '';
+                    document.getElementById('messageInput').focus();
+                } else {
+                    showError('joinChannelError', data.error);
                 }
-                
-                // Load messages immediately
-                loadMessages(channelId);
-                
-                // Start message polling
-                startMessagePolling(channelId);
 
             } catch (error) {
                 console.error('Error joining channel:', error);
-                showError('joinChannelError', 'Failed to join channel. Please try again.');
+                showError('joinChannelError', 'Failed to join channel');
             }
         }
 
-        async function joinPrivateChannel() {
-            const code = document.getElementById('channelCodeInput').value.trim();
-            
-            if (!code) {
-                showError('joinChannelError', 'Please enter a channel code');
-                return;
-            }
-
+        // Load messages
+        async function loadMessages(channelId) {
             try {
-                // Find channel by code
-                const response = await fetch('/channels');
-                const channels = await response.json();
-                
-                // Look for private channel with matching code
-                let privateChannel = null;
-                for (let channel of channels) {
-                    if (channel.type === 'private' && channel.code === code.toUpperCase()) {
-                        privateChannel = channel;
-                        break;
-                    }
-                }
-                
-                if (!privateChannel) {
-                    showError('joinChannelError', 'Invalid channel code or channel not found');
-                    return;
-                }
-
-                // Join the channel using the join_channel endpoint
-                const joinResponse = await fetch('/join_channel', {
+                const response = await fetch('/get_messages', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        channelId: privateChannel.id,
-                        code: code.toUpperCase(),
-                        userId: currentUser.id
+                        channelId: channelId
                     })
                 });
 
-                const joinData = await joinResponse.json();
-
-                if (joinData.error) {
-                    showError('joinChannelError', joinData.error);
-                    return;
+                const data = await response.json();
+                if (data.success) {
+                    displayMessages(data.messages);
                 }
-
-                // Successfully joined, now switch to the channel
-                currentChannel = privateChannel.id;
-                document.getElementById('chatTitle').textContent = privateChannel.name;
-                document.getElementById('chatMeta').textContent = `Channel type: ${privateChannel.type}`;
-                
-                // Update sidebar active state
-                document.querySelectorAll('.channel-item').forEach(item => {
-                    item.classList.remove('active');
-                });
-                
-                // Find and activate the channel item
-                const channelItems = document.querySelectorAll('.channel-item');
-                for (let item of channelItems) {
-                    if (item.onclick && item.onclick.toString().includes(privateChannel.id)) {
-                        item.classList.add('active');
-                        break;
-                    }
-                }
-                
-                // Enable message input if user has nickname
-                if (currentUser.nickname) {
-                    document.getElementById('messageInput').disabled = false;
-                    document.getElementById('sendBtn').disabled = false;
-                }
-                
-                // Load messages immediately
-                loadMessages(privateChannel.id);
-                
-                // Start message polling
-                startMessagePolling(privateChannel.id);
-                
-                closeModal('joinChannelModal');
-                document.getElementById('channelCodeInput').value = '';
-
-            } catch (error) {
-                console.error('Error joining private channel:', error);
-                showError('joinChannelError', 'Failed to join private channel. Please try again.');
-            }
-        }
-
-        async function loadMessages(channelId) {
-            try {
-                const response = await fetch(`/messages/${channelId}`);
-                const messages = await response.json();
-
-                const chatMessages = document.getElementById('chatMessages');
-                
-                // Only reload if message count changed AND we're in the right channel
-                if (messages.length !== lastMessageCount && currentChannel === channelId) {
-                    chatMessages.innerHTML = '';
-
-                    if (messages.length === 0) {
-                        chatMessages.innerHTML = `
-                            <div style="text-align: center; color: var(--text-secondary); margin-top: 50px;">
-                                <h3>No messages yet</h3>
-                                <p>Be the first to send a message in this channel!</p>
-                            </div>
-                        `;
-                        lastMessageCount = 0;
-                        return;
-                    }
-
-                    messages.forEach((message, index) => {
-                        const messageWrapper = document.createElement('div');
-                        messageWrapper.className = `message-wrapper ${message.userId === currentUser.id ? 'self' : 'other'}`;
-                        
-                        // Only animate new messages (not on initial load)
-                        if (index === messages.length - 1 && messages.length > lastMessageCount) {
-                            messageWrapper.classList.add('new-message');
-                        }
-                        
-                        messageWrapper.innerHTML = `
-                            <div class="nickname">${message.nickname}</div>
-                            <div class="bubble ${message.userId === currentUser.id ? 'self' : 'other'}">
-                                ${message.text}
-                                <div class="timestamp">${formatTime(message.timestamp)}</div>
-                            </div>
-                        `;
-                        
-                        chatMessages.appendChild(messageWrapper);
-                    });
-
-                    lastMessageCount = messages.length;
-                    
-                    // Scroll to bottom
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                }
-
             } catch (error) {
                 console.error('Error loading messages:', error);
             }
+        }
+
+        // Display messages
+        function displayMessages(messages) {
+            const chatMessages = document.getElementById('chatMessages');
+            
+            // Only update if message count changed
+            if (messages.length === lastMessageCount) {
+                return;
+            }
+
+            chatMessages.innerHTML = '';
+            
+            messages.forEach(message => {
+                const messageWrapper = document.createElement('div');
+                messageWrapper.className = 'message';
+                
+                messageWrapper.innerHTML = `
+                    <div class="message-header">
+                        <span class="message-user">${message.user}</span>
+                        <div class="timestamp">${formatTime(message.timestamp)}</div>
+                    </div>
+                    <div class="message-content">${message.text}</div>
+                `;
+                
+                chatMessages.appendChild(messageWrapper);
+            });
+
+            lastMessageCount = messages.length;
+            
+            // Scroll to bottom
+            chatMessages.scrollTop = chatMessages.scrollHeight;
         }
 
         function startMessagePolling(channelId) {
@@ -1691,69 +1179,186 @@
                 clearInterval(messageInterval);
             }
             
-            messageInterval = setInterval(() => {
+            messageInterval = setInterval(async () => {
                 if (currentChannel === channelId) {
-                    loadMessages(channelId);
+                    await loadMessages(channelId);
                 }
-            }, 3000); // Poll every 3 seconds
+            }, 2000); // Poll every 2 seconds
         }
 
+        // Send message
         async function sendMessage() {
-            const messageInput = document.getElementById('messageInput');
-            const text = messageInput.value.trim();
-            
-            if (!text) {
-                return;
-            }
-
             if (!currentChannel) {
-                showError('nicknameError', 'Please select a channel first');
+                showError('sendMessageError', 'Please select a channel first');
                 return;
             }
 
-            if (!currentUser.nickname) {
-                showError('nicknameError', 'Please set a nickname first');
+            const messageText = document.getElementById('messageInput').value.trim();
+            if (!messageText) {
                 return;
             }
 
             try {
-                const response = await fetch('/send', {
+                const response = await fetch('/send_message', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        text: text,
-                        userId: currentUser.id,
-                        nickname: currentUser.nickname,
-                        channelId: currentChannel
+                        channelId: currentChannel,
+                        message: messageText,
+                        userId: currentUser.id
                     })
                 });
 
                 const data = await response.json();
-
-                if (data.error) {
-                    showError('nicknameError', data.error);
-                    return;
+                if (data.success) {
+                    document.getElementById('messageInput').value = '';
+                    updateCharacterCounter(0);
+                    
+                    // Reload messages to show the new message
+                    await loadMessages(currentChannel);
+                } else {
+                    showError('sendMessageError', data.error);
                 }
-
-                // Clear input and reload messages
-                messageInput.value = '';
-                loadMessages(currentChannel);
-
             } catch (error) {
                 console.error('Error sending message:', error);
-                showError('nicknameError', 'Failed to send message. Please try again.');
+                showError('sendMessageError', 'Failed to send message');
             }
         }
 
-        async function deleteChannel(channelId, event) {
-            event.stopPropagation(); // Prevent channel selection
-            
-            if (!confirm('Are you sure you want to delete this channel? This action cannot be undone.')) {
+        // Create channel
+        async function createChannel() {
+            const name = document.getElementById('channelNameInput').value.trim();
+            const type = document.getElementById('channelTypeSelect').value;
+            const messageLifetime = parseInt(document.getElementById('messageLifetimeSelect').value);
+            const customCode = document.getElementById('customCodeInput').value.trim();
+
+            if (!name) {
+                showError('createChannelError', 'Please enter a channel name');
                 return;
             }
+
+            try {
+                const response = await fetch('/create_channel', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        name: name,
+                        type: type,
+                        messageLifetime: messageLifetime,
+                        customCode: customCode,
+                        creator: currentUser.id
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    hideModal('createChannelModal');
+                    showSuccess('createChannelSuccess', `Channel created successfully! ${type === 'private' ? `Code: ${data.code}` : ''}`);
+                    
+                    // Clear form
+                    document.getElementById('channelNameInput').value = '';
+                    document.getElementById('channelTypeSelect').value = 'public';
+                    document.getElementById('messageLifetimeSelect').value = '300';
+                    document.getElementById('customCodeInput').value = '';
+                    document.getElementById('customCodeGroup').style.display = 'none';
+                    
+                    // Reload channels
+                    loadChannels();
+                } else {
+                    showError('createChannelError', data.error);
+                }
+            } catch (error) {
+                console.error('Error creating channel:', error);
+                showError('createChannelError', 'Failed to create channel');
+            }
+        }
+
+        // Join private channel
+        async function joinPrivateChannel() {
+            const code = document.getElementById('joinCodeInput').value.trim();
+
+            if (!code) {
+                showError('joinChannelError', 'Please enter a channel code');
+                return;
+            }
+
+            try {
+                // Find channel by code
+                const targetChannel = allChannels.find(channel => 
+                    channel.type === 'private' && channel.code === code
+                );
+
+                if (!targetChannel) {
+                    showError('joinChannelError', 'Invalid channel code');
+                    return;
+                }
+
+                // Join the channel
+                await joinChannel(targetChannel.id);
+                hideModal('joinChannelModal');
+                document.getElementById('joinCodeInput').value = '';
+                
+            } catch (error) {
+                console.error('Error joining private channel:', error);
+                showError('joinChannelError', 'Failed to join channel');
+            }
+        }
+
+        // Create direct message
+        async function createDirectMessage() {
+            const targetNickname = document.getElementById('targetNicknameInput').value.trim();
+
+            if (!targetNickname) {
+                showError('directMessageError', 'Please enter a nickname');
+                return;
+            }
+
+            try {
+                const response = await fetch('/create_dm', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        userId: currentUser.id,
+                        targetNickname: targetNickname
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    hideModal('directMessageModal');
+                    showSuccess('directMessageSuccess', 'Direct message channel created!');
+                    
+                    // Clear form
+                    document.getElementById('targetNicknameInput').value = '';
+                    
+                    // Reload DM channels
+                    loadDMChannels();
+                    
+                    // Join the new DM channel
+                    await joinChannel(data.channelId);
+                } else {
+                    showError('directMessageError', data.error);
+                }
+            } catch (error) {
+                console.error('Error creating direct message:', error);
+                showError('directMessageError', 'Failed to create direct message');
+            }
+        }
+
+        // Delete channel
+        async function deleteChannel(channelId, event) {
+            event.stopPropagation();
             
+            if (!confirm('Are you sure you want to delete this channel?')) {
+                return;
+            }
+
             try {
                 const response = await fetch('/delete_channel', {
                     method: 'POST',
@@ -1767,29 +1372,153 @@
                 });
 
                 const data = await response.json();
-
-                if (data.error) {
-                    showError('nicknameError', data.error);
-                    return;
+                if (data.success) {
+                    // If we're currently in the deleted channel, clear chat
+                    if (currentChannel === channelId) {
+                        currentChannel = null;
+                        document.getElementById('chatTitle').textContent = 'Welcome to TMAchat!';
+                        document.getElementById('chatMeta').textContent = 'Select a channel to start chatting';
+                        document.getElementById('chatMessages').innerHTML = `
+                            <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                                <h3>�� Welcome to TMAchat!</h3>
+                                <p>Select a channel from the sidebar to start chatting</p>
+                            </div>
+                        `;
+                        
+                        if (messageInterval) {
+                            clearInterval(messageInterval);
+                        }
+                    }
+                    
+                    // Reload channels
+                    loadChannels();
+                    loadDMChannels();
+                } else {
+                    alert(data.error);
                 }
-
-                // If we were in the deleted channel, switch to main
-                if (currentChannel === channelId) {
-                    currentChannel = 'main';
-                    document.getElementById('chatTitle').textContent = 'Main Chat';
-                    document.getElementById('chatMeta').textContent = 'Channel type: public';
-                    loadMessages('main');
-                    startMessagePolling('main');
-                }
-                
-                // Reload channels to update the list
-                loadChannels();
-                
-                showSuccess('nicknameError', 'Channel deleted successfully!');
-
             } catch (error) {
                 console.error('Error deleting channel:', error);
-                showError('nicknameError', 'Failed to delete channel. Please try again.');
+                alert('Failed to delete channel');
+            }
+        }
+
+        // Utility functions
+        function formatTime(timestamp) {
+            const date = new Date(timestamp * 1000);
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function updateCharacterCounter(count) {
+            const counter = document.getElementById('charCounter');
+            counter.textContent = `${count}/500`;
+            
+            counter.className = 'char-counter';
+            if (count > 400) {
+                counter.classList.add('warning');
+            }
+            if (count > 450) {
+                counter.classList.add('danger');
+            }
+        }
+
+        // Modal functions
+        function showModal(modalId) {
+            document.getElementById(modalId).style.display = 'block';
+        }
+
+        function hideModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        function closeModal(modalId) {
+            hideModal(modalId);
+        }
+
+        function showError(elementId, message) {
+            const errorElement = document.getElementById(elementId);
+            if (errorElement) {
+                errorElement.textContent = message;
+                errorElement.style.display = 'block';
+                setTimeout(() => {
+                    errorElement.style.display = 'none';
+                }, 5000);
+            }
+        }
+
+        function showSuccess(elementId, message) {
+            const successElement = document.getElementById(elementId);
+            if (successElement) {                
+                successElement.textContent = message;
+                successElement.style.display = 'block';
+                setTimeout(() => {
+                    successElement.style.display = 'none';
+                }, 5000);
+            }
+        }
+
+        // Modal open functions
+        function openCreateChannelModal() {
+            showModal('createChannelModal');
+            document.getElementById('channelNameInput').focus();
+        }
+
+        function openJoinChannelModal() {
+            showModal('joinChannelModal');
+            document.getElementById('joinCodeInput').focus();
+        }
+
+        function openDirectMessageModal() {
+            showModal('directMessageModal');
+            document.getElementById('targetNicknameInput').focus();
+        }
+
+        function openChangeUsernameModal() {
+            showModal('changeUsernameModal');
+            document.getElementById('newNicknameInput').focus();
+        }
+
+        // Mobile sidebar toggle
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('open');
+        }
+
+        // Theme toggle
+        function toggleTheme() {
+            const body = document.body;
+            const themeToggle = document.querySelector('.theme-toggle');
+            
+            if (body.getAttribute('data-theme') === 'dark') {
+                body.setAttribute('data-theme', 'light');
+                themeToggle.textContent = '🌙';
+                localStorage.setItem('chat-theme', 'light');
+            } else if (body.getAttribute('data-theme') === 'light') {
+                body.setAttribute('data-theme', 'blue');
+                themeToggle.textContent = '🌊';
+                localStorage.setItem('chat-theme', 'blue');
+            } else {
+                body.setAttribute('data-theme', 'dark');
+                themeToggle.textContent = '🌙';
+                localStorage.setItem('chat-theme', 'dark');
+            }
+        }
+
+        // Load saved theme
+        const savedTheme = localStorage.getItem('chat-theme');
+        if (savedTheme) {
+            setTheme(savedTheme);
+        }
+
+        function setTheme(theme) {
+            document.body.setAttribute('data-theme', theme);
+            const themeToggle = document.querySelector('.theme-toggle');
+            
+            if (theme === 'light') {
+                themeToggle.textContent = '🌙';
+            } else if (theme === 'blue') {
+                themeToggle.textContent = '🌊';
+            } else {
+                themeToggle.textContent = '🌙';
             }
         }
 
@@ -1808,15 +1537,10 @@
                     adminCodeBuffer = '';
                 }, 3000);
                 
-                // Check if the code matches
+                // Check if admin code is entered
                 if (adminCodeBuffer === '68651') {
-                    adminCodeBuffer = ''; // Reset buffer
                     openAdminPanel();
-                }
-                
-                // Keep buffer at max 5 digits
-                if (adminCodeBuffer.length > 5) {
-                    adminCodeBuffer = adminCodeBuffer.slice(-5);
+                    adminCodeBuffer = ''; // Reset buffer
                 }
             }
         });
@@ -1839,8 +1563,9 @@
                 z-index: 10000;
                 font-size: 14px;
                 box-shadow: var(--shadow-lg);
+                animation: slideInRight 0.3s ease;
             `;
-            notification.textContent = ' Admin panel opened';
+            notification.textContent = '�� Admin panel opened!';
             document.body.appendChild(notification);
             
             // Remove notification after 3 seconds
@@ -1848,7 +1573,16 @@
                 notification.remove();
             }, 3000);
         }
-        
+
+        // Add CSS animation for notification
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideInRight {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+        `;
+        document.head.appendChild(style);
     </script>
 </body>
 </html>
