@@ -797,7 +797,9 @@
 
         // Initialize app
         document.addEventListener('DOMContentLoaded', function() {
-            openModal('nicknameModal');
+            // Check if user already has a nickname stored
+            checkExistingUser();
+            
             loadChannels();
             
             // Setup event listeners
@@ -845,6 +847,36 @@
                 document.getElementById('generatedCode').textContent = value;
             });
         });
+
+        // Check if user already has a nickname stored
+        async function checkExistingUser() {
+            try {
+                const response = await fetch(`/get_user?userId=${currentUser.id}`);
+                const data = await response.json();
+                
+                if (data.success && data.user) {
+                    // User already has a nickname, use it
+                    currentUser.nickname = data.user.nickname;
+                    document.getElementById('userInfo').textContent = `Welcome back ${data.user.nickname}!`;
+                    
+                    // Don't show nickname modal if user already has one
+                    // closeModal('nicknameModal'); // Uncomment this line if you want to skip the modal
+                    
+                    // Enable message input if we're in a channel
+                    if (currentChannel) {
+                        document.getElementById('messageInput').disabled = false;
+                        document.getElementById('sendBtn').disabled = false;
+                    }
+                } else {
+                    // New user, show nickname modal
+                    openModal('nicknameModal');
+                }
+            } catch (error) {
+                console.error('Error checking existing user:', error);
+                // Fallback: show nickname modal
+                openModal('nicknameModal');
+            }
+        }
 
         // Utility functions
         function generateChannelCode() {
@@ -951,8 +983,9 @@
                     return;
                 }
 
-                currentUser.nickname = nickname;
-                document.getElementById('userInfo').textContent = `Welcome ${nickname}!`;
+                // Use the nickname from the response (in case it was modified for uniqueness)
+                currentUser.nickname = data.nickname;
+                document.getElementById('userInfo').textContent = `Welcome ${data.nickname}!`;
                 closeModal('nicknameModal');
                 
                 // Enable message input for main channel
@@ -1075,61 +1108,60 @@
         }
 
         async function joinChannel(channelId) {
-    try {
-        const response = await fetch('/join_channel', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                channelId: channelId,
-                code: '',
-                userId: currentUser.id
-            })
-        });
+            try {
+                const response = await fetch('/join_channel', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        channelId: channelId,
+                        code: '',
+                        userId: currentUser.id
+                    })
+                });
 
-        const data = await response.json();
+                const data = await response.json();
 
-        if (data.error) {
-            showError('joinChannelError', data.error);
-            return;
-        }
+                if (data.error) {
+                    showError('joinChannelError', data.error);
+                    return;
+                }
 
-        currentChannel = channelId;
-        document.getElementById('chatTitle').textContent = data.channel.name;
-        document.getElementById('chatMeta').textContent = `Channel type: ${data.channel.type}`;
-        
-        // Update sidebar active state - FIXED VERSION
-        document.querySelectorAll('.channel-item').forEach(item => {
-            item.classList.remove('active');
-        });
-        
-        // Find and activate the clicked channel item by data attribute
-        const channelItems = document.querySelectorAll('.channel-item');
-        channelItems.forEach((item, index) => {
-            // Check if this item corresponds to the selected channel
-            if (allChannels[index] && allChannels[index].id === channelId) {
-                item.classList.add('active');
+                currentChannel = channelId;
+                document.getElementById('chatTitle').textContent = data.channel.name;
+                document.getElementById('chatMeta').textContent = `Channel type: ${data.channel.type}`;
+                
+                // Update sidebar active state - IMPROVED VERSION
+                document.querySelectorAll('.channel-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                
+                // Find and activate the clicked channel item by matching channel ID
+                const channelItems = document.querySelectorAll('.channel-item');
+                channelItems.forEach((item, index) => {
+                    if (allChannels[index] && allChannels[index].id === channelId) {
+                        item.classList.add('active');
+                    }
+                });
+                
+                // Enable message input if user has nickname
+                if (currentUser.nickname) {
+                    document.getElementById('messageInput').disabled = false;
+                    document.getElementById('sendBtn').disabled = false;
+                }
+                
+                // Load messages immediately
+                loadMessages(channelId);
+                
+                // Start message polling
+                startMessagePolling(channelId);
+
+            } catch (error) {
+                console.error('Error joining channel:', error);
+                showError('joinChannelError', 'Failed to join channel. Please try again.');
             }
-        });
-        
-        // Enable message input if user has nickname
-        if (currentUser.nickname) {
-            document.getElementById('messageInput').disabled = false;
-            document.getElementById('sendBtn').disabled = false;
         }
-        
-        // Load messages immediately
-        loadMessages(channelId);
-        
-        // Start message polling
-        startMessagePolling(channelId);
-
-    } catch (error) {
-        console.error('Error joining channel:', error);
-        showError('joinChannelError', 'Failed to join channel. Please try again.');
-    }
-}
 
         async function joinPrivateChannel() {
             const code = document.getElementById('channelCodeInput').value.trim();
@@ -1225,8 +1257,8 @@
 
                 const chatMessages = document.getElementById('chatMessages');
                 
-                // Only reload if message count changed
-                if (messages.length !== lastMessageCount) {
+                // Only reload if message count changed AND we're in the right channel
+                if (messages.length !== lastMessageCount && currentChannel === channelId) {
                     chatMessages.innerHTML = '';
 
                     if (messages.length === 0) {
@@ -1379,65 +1411,61 @@
         }
 
         // Global admin code detection
-let adminCodeBuffer = '';
-let adminCodeTimeout;
+        let adminCodeBuffer = '';
+        let adminCodeTimeout;
 
-document.addEventListener('keydown', function(event) {
-    // Only listen for number keys
-    if (event.key >= '0' && event.key <= '9') {
-        adminCodeBuffer += event.key;
-        
-        // Clear the buffer after 3 seconds of inactivity
-        clearTimeout(adminCodeTimeout);
-        adminCodeTimeout = setTimeout(() => {
-            adminCodeBuffer = '';
-        }, 3000);
-        
-        // Check if the code matches
-        if (adminCodeBuffer === '68651') {
-            adminCodeBuffer = ''; // Reset buffer
-            openAdminPanel();
+        document.addEventListener('keydown', function(event) {
+            // Only listen for number keys
+            if (event.key >= '0' && event.key <= '9') {
+                adminCodeBuffer += event.key;
+                
+                // Clear the buffer after 3 seconds of inactivity
+                clearTimeout(adminCodeTimeout);
+                adminCodeTimeout = setTimeout(() => {
+                    adminCodeBuffer = '';
+                }, 3000);
+                
+                // Check if the code matches
+                if (adminCodeBuffer === '68651') {
+                    adminCodeBuffer = ''; // Reset buffer
+                    openAdminPanel();
+                }
+                
+                // Keep buffer at max 5 digits
+                if (adminCodeBuffer.length > 5) {
+                    adminCodeBuffer = adminCodeBuffer.slice(-5);
+                }
+            }
+        });
+
+              // Function to open admin panel
+        function openAdminPanel() {
+            // Open admin panel in new tab/window
+            window.open('/admin', '_blank');
+            
+            // Optional: Show a subtle notification
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: var(--accent-primary);
+                color: white;
+                padding: 10px 20px;
+                border-radius: 8px;
+                z-index: 10000;
+                font-size: 14px;
+                box-shadow: var(--shadow-lg);
+            `;
+            notification.textContent = '�� Admin panel opened';
+            document.body.appendChild(notification);
+            
+            // Remove notification after 3 seconds
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
         }
-        
-        // Keep buffer at max 5 digits
-        if (adminCodeBuffer.length > 5) {
-            adminCodeBuffer = adminCodeBuffer.slice(-5);
-        }
-    }
-});
-
-// Function to open admin panel
-function openAdminPanel() {
-    // Open admin panel in new tab/window
-    window.open('/admin', '_blank');
-    
-    // Optional: Show a subtle notification
-    const notification = document.createElement('div');
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: var(--accent-primary);
-        color: white;
-        padding: 10px 20px;
-        border-radius: 8px;
-        z-index: 10000;
-        font-size: 14px;
-        box-shadow: var(--shadow-lg);
-    `;
-    notification.textContent = '�� Admin panel opened';
-    document.body.appendChild(notification);
-    
-    // Remove notification after 3 seconds
-    setTimeout(() => {
-        notification.remove();
-    }, 3000);
-}
-
         
     </script>
 </body>
 </html>
-
-
-
