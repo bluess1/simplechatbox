@@ -676,7 +676,7 @@
                 <label class="form-label">Channel Type</label>
                 <select id="channelTypeSelect">
                     <option value="public">🌍 Public - Anyone can join</option>
-                    <option value="private">�� Private - Requires code to join</option>
+                    <option value="private"> Private - Requires code to join</option>
                 </select>
             </div>
             
@@ -743,6 +743,25 @@
             
             <button id="createDmBtn" onclick="createDirectMessage()">Start Chat</button>
             <button class="secondary" onclick="closeModal('createDmModal')">Cancel</button>
+        </div>
+    </div>
+
+    <!-- User Search Modal -->
+    <div id="userSearchModal" class="modal">
+        <div class="modal-content">
+            <h2>👥 Find Users</h2>
+            <p>Search for users to start a direct message with</p>
+            
+            <div class="form-group">
+                <label class="form-label">Search Users</label>
+                <input type="text" id="userSearchInput" placeholder="Type to search users..." />
+            </div>
+            
+            <div id="userSearchResults" style="max-height: 300px; overflow-y: auto;">
+                <!-- Users will be populated here -->
+            </div>
+            
+            <button class="secondary" onclick="closeModal('userSearchModal')">Close</button>
         </div>
     </div>
 
@@ -815,6 +834,9 @@
                     </button>
                     <button class="action-btn" onclick="openModal('createDmModal')" style="background: var(--accent-primary);">
                         💬 Direct Message
+                    </button>
+                    <button class="action-btn" onclick="openModal('userSearchModal')" style="background: var(--text-secondary);">
+                        👥 Find Users
                     </button>
                 </div>
             </div>
@@ -917,6 +939,16 @@
                 counter.textContent = `${length}/25 characters`;
                 counter.className = length > 20 ? 'char-counter warning' : 'char-counter';
             });
+
+            // User search input handler
+            document.getElementById('userSearchInput').addEventListener('input', function(e) {
+                const query = e.target.value.trim();
+                if (query === '') {
+                    loadAllUsers(); // Show all users when search is empty
+                } else {
+                    searchUsers(query); // Search users as you type
+                }
+            });
         });
 
         // Check if user already has a nickname stored
@@ -1003,6 +1035,11 @@
         // Modal functions
         function openModal(modalId) {
             document.getElementById(modalId).style.display = 'block';
+            
+            // If opening user search modal, load all users
+            if (modalId === 'userSearchModal') {
+                loadAllUsers();
+            }
         }
 
         function closeModal(modalId) {
@@ -1158,6 +1195,99 @@
             }
         }
 
+        // User search functions
+        async function loadAllUsers() {
+            try {
+                const response = await fetch('/search_users');
+                const data = await response.json();
+                
+                displayUserSearchResults(data.users);
+            } catch (error) {
+                console.error('Error loading users:', error);
+            }
+        }
+
+        async function searchUsers(query) {
+            try {
+                const response = await fetch(`/search_users?query=${encodeURIComponent(query)}`);
+                const data = await response.json();
+                
+                displayUserSearchResults(data.users);
+            } catch (error) {
+                console.error('Error searching users:', error);
+            }
+        }
+
+        function displayUserSearchResults(users) {
+            const resultsContainer = document.getElementById('userSearchResults');
+            
+            if (users.length === 0) {
+                resultsContainer.innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 20px;">No users found</div>';
+                return;
+            }
+            
+            resultsContainer.innerHTML = '';
+            
+            users.forEach(user => {
+                if (user.userId === currentUser.id) return; // Don't show current user
+                
+                const userItem = document.createElement('div');
+                userItem.style.cssText = `
+                    padding: 12px;
+                    border: 1px solid var(--border-color);
+                    border-radius: 8px;
+                    margin-bottom: 8px;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    background: var(--bg-primary);
+                `;
+                
+                userItem.onmouseenter = function() {
+                    this.style.background = 'var(--bg-tertiary)';
+                };
+                
+                userItem.onmouseleave = function() {
+                    this.style.background = 'var(--bg-primary)';
+                };
+                
+                userItem.onclick = function() {
+                    // Start DM with this user
+                    startDmWithUser(user.nickname);
+                };
+                
+                userItem.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-weight: 600; color: var(--text-primary);">${user.nickname}</div>
+                            <div style="font-size: 12px; color: var(--text-secondary);">Click to start DM</div>
+                        </div>
+                        <button onclick="startDmWithUser('${user.nickname}')" style="
+                            background: var(--accent-primary);
+                            color: white;
+                            border: none;
+                            padding: 6px 12px;
+                            border-radius: 6px;
+                            cursor: pointer;
+                            font-size: 12px;
+                        ">💬</button>
+                    </div>
+                `;
+                
+                resultsContainer.appendChild(userItem);
+            });
+        }
+
+        function startDmWithUser(nickname) {
+            // Close user search modal
+            closeModal('userSearchModal');
+            
+            // Pre-fill the DM modal with the selected user
+            document.getElementById('targetNicknameInput').value = nickname;
+            
+            // Open the DM creation modal
+            openModal('createDmModal');
+        }
+
         // Direct Message functions
         async function createDirectMessage() {
             const targetNickname = document.getElementById('targetNicknameInput').value.trim();
@@ -1237,7 +1367,8 @@
                         </div>
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <div class="channel-badge dm">💬</div>
-                            <button class="delete-channel-btn" onclick="deleteChannel('${dm.id}', event)">🗑️</button>
+
+                <button class="delete-channel-btn" onclick="deleteChannel('${dm.id}', event)">🗑️</button>
                         </div>
                     `;
 
@@ -1337,7 +1468,8 @@
 
                 if (data.error) {
                     showError('createChannelError', data.error);
-                    return;}
+                    return;
+                }
 
                 showSuccess('createChannelSuccess', 'Channel created successfully!');
                 closeModal('createChannelModal');
@@ -1376,7 +1508,8 @@
 
                 if (data.error) {
                     showError('joinChannelError', data.error);
-                    return;                }
+                    return;
+                }
 
                 currentChannel = channelId;
                 document.getElementById('chatTitle').textContent = data.channel.name;
