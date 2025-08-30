@@ -1,799 +1,1854 @@
-from flask import Flask, render_template, request, jsonify
-import time, os, re, random, string
-from datetime import datetime, timedelta
-import json
-
-app = Flask(__name__)
-
-# Data structures
-channels = {
-    "main": {
-        "id": "main",
-        "name": "Main Chat",
-        "type": "public",
-        "code": None,
-        "messages": [],
-        "created_at": time.time(),
-        "last_activity": time.time(),
-        "message_lifetime": 300,  # 5 minutes default
-        "creator": "system",
-        "members": set(),  # Track who has joined
-        "is_system": True  # Mark system channels
-    }
-}
-nicknames = {}
-
-def normalize(text):
-    if not text:
-        return ""
-    text = text.lower()
-    substitutions = {
-        '0': 'o', '1': 'i', '3': 'e', '4': 'a', '5': 's', '7': 't',
-        '@': 'a', '$': 's', '!': 'i', '+': 't', '|': 'l'
-    }
-    for char, replacement in substitutions.items():
-        text = text.replace(char, replacement)
-    text = re.sub(r'[^a-z\s]', '', text)
-    text = re.sub(r'\s+', '', text)
-    return text
-
-banned_words = [
-   "bomb", "shooter", "kill", "nigger", "fck", "violence", "gun", "knife", "weapon", "niggar", "nigglet",
-    "345fdgfdg", "nazi", "hitler", "345fdgfdg", "sexist", "nga", "n g a", "345fdgfdg", "345fdgfdg", "nigge",
-    "porn", "sex", "nude", "naked", "horny", "sexy", "dick", "penis", "vagina", "boobs", "345fdgfdg",
-    "345fdgfdg", "heroin", "345fdgfdg", "345fdgfdg", "345fdgfdg", "marijuana", "crack", "ecstasy", "lsd",
-    "345fdgfdg", "345fdgfdg", "345fdgfdg", "345fdgfdg", "345fdgfdg", "345fdgfdg", "345fdgfdg", "345fdgfdg",
-    "345fdgfdg", "345fdgfdg", "345fdgfdg", "345fdgfdg", "345fdgfdg", "345fdgfdg", "345fdgfdg", "345fdgfdg", "345fdgfdg",
-    "fuck", "shit", "345fdgfdg", "345fdgfdg", "bitch", "345fdgfdg", "345fdgfdg", "345fdgfdg", "whore", "slut"
-]
-
-def contains_banned_content(text):
-    if not text:
-        return False
-    norm = normalize(text)
-    for bad in banned_words:
-        if bad in norm:
-            return True
-    compressed = re.sub(r'(.)\1{2,}', r'\1', norm)
-    for bad in banned_words:
-        if bad in compressed:
-            return True
-    return False
-
-def generate_channel_code():
-    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
-
-def generate_id():
-    return ''.join(random.choices(string.ascii_letters + string.digits, k=8))
-
-def is_nickname_unique(nickname):
-    # Convert to lowercase for case-insensitive comparison
-    nickname_lower = nickname.lower()
-    for user_data in nicknames.values():
-        if user_data["nickname"].lower() == nickname_lower:
-            return False
-    return True
-
-def create_dm_channel(user1_id, user2_id):
-    """Create a direct message channel between two users"""
-    # Sort user IDs to ensure consistent channel naming
-    sorted_users = sorted([user1_id, user2_id])
-    channel_id = f"dm_{sorted_users[0]}_{sorted_users[1]}"
-    
-    # Get nicknames for display
-    user1_nickname = nicknames.get(user1_id, {}).get("nickname", "Unknown")
-    user2_nickname = nicknames.get(user2_id, {}).get("nickname", "Unknown")
-    
-    if channel_id not in channels:
-        channels[channel_id] = {
-            "id": channel_id,
-            "name": f"�� {user1_nickname} & {user2_nickname}",
-            "type": "dm",  # New type for direct messages
-            "code": None,
-            "messages": [],
-            "created_at": time.time(),
-            "last_activity": time.time(),
-            "message_lifetime": 86400,  # 24 hours for DMs
-            "creator": user1_id,
-            "members": {user1_id, user2_id},
-            "is_system": False,
-            "is_dm": True,  # Mark as direct message
-            "dm_users": {user1_id, user2_id}  # Store the two users
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Live Chat - Multi Channel</title>
+    <style>
+        :root {
+            --bg-primary: #f8fafc;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f1f5f9;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --accent-primary: #3b82f6;
+            --accent-hover: #2563eb;
+            --border-color: #e2e8f0;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
         }
-        save_data()
-    
-    return channel_id
 
-def get_user_by_nickname(nickname):
-    """Find user ID by nickname (case-insensitive)"""
-    nickname_lower = nickname.lower()
-    for user_id, user_data in nicknames.items():
-        if user_data["nickname"].lower() == nickname_lower:
-            return user_id
-    return None
-
-def cleanup_messages():
-    """Remove old messages and inactive channels"""
-    now = time.time()
-    global channels, nicknames
-    
-    # Clean up old nicknames (5 minutes)
-    nicknames = {k: v for k, v in nicknames.items() if now - v["time"] < 300}
-    
-    # Clean up messages in each channel
-    channels_to_remove = []
-    for channel_id, channel in channels.items():
-        # Remove old messages based on channel's message lifetime
-        channel["messages"] = [m for m in channel["messages"] if now - m["time"] < channel["message_lifetime"]]
-        
-        # Remove inactive user-created channels after 12 hours (43200 seconds)
-        # But don't remove DM channels
-        if not channel.get("is_system", False) and not channel.get("is_dm", False):
-            if now - channel["last_activity"] > 43200:  # 12 hours
-                channels_to_remove.append(channel_id)
-                print(f"Auto-deleting inactive channel: {channel['name']} (ID: {channel_id})")
-    
-    # Remove inactive channels
-    for channel_id in channels_to_remove:
-        del channels[channel_id]
-
-def save_data():
-    # Convert sets to lists for JSON serialization
-    data_to_save = {
-        "channels": {},
-        "nicknames": {}
-    }
-    
-    for channel_id, channel in channels.items():
-        channel_copy = channel.copy()
-        channel_copy["members"] = list(channel["members"])
-        if "dm_users" in channel_copy:
-            channel_copy["dm_users"] = list(channel_copy["dm_users"])
-        data_to_save["channels"][channel_id] = channel_copy
-    
-    data_to_save["nicknames"] = nicknames
-    
-    try:
-        with open("chat_data.json", "w") as f:
-            json.dump(data_to_save, f, indent=2)
-    except Exception as e:
-        print(f"Error saving data: {e}")
-
-def load_data():
-    global channels, nicknames
-    try:
-        with open("chat_data.json", "r") as f:
-            data = json.load(f)
-            
-        # Convert lists back to sets
-        for channel_id, channel in data["channels"].items():
-            channel["members"] = set(channel["members"])
-            if "dm_users" in channel:
-                channel["dm_users"] = set(channel["dm_users"])
-            channels[channel_id] = channel
-            
-        nicknames = data["nicknames"]
-    except FileNotFoundError:
-        pass  # First time running, use defaults
-    except Exception as e:
-        print(f"Error loading data: {e}")
-
-@app.route("/")
-def index():
-    return render_template("chat.html")
-
-@app.route("/admin")
-def admin():
-    return render_template("admin.html")
-
-@app.route("/set_nickname", methods=["POST"])
-def set_nickname():
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "No data provided"}), 400
-            
-        user_id = data.get("userId", "").strip()
-        nickname = data.get("nickname", "").strip()
-        
-        if not user_id or not nickname:
-            return jsonify({"error": "User ID and nickname are required"}), 400
-        if len(nickname) > 25:
-            return jsonify({"error": "Nickname must be 25 characters or less"}), 400
-        if contains_banned_content(nickname):
-            return jsonify({"error": "Nickname contains inappropriate content"}), 400
-        
-        cleanup_messages()
-        
-        # Check if nickname is already taken (case-insensitive)
-        if not is_nickname_unique(nickname):
-            return jsonify({"error": "Nickname already taken"}), 400
-        
-        # Create or update user
-        if user_id not in nicknames:
-            nicknames[user_id] = {
-                "nickname": nickname,
-                "created_at": time.time(),
-                "last_seen": time.time(),
-                "time": time.time()  # Keep compatibility with existing code
-            }
-        else:
-            nicknames[user_id]["nickname"] = nickname
-            nicknames[user_id]["last_seen"] = time.time()
-            nicknames[user_id]["time"] = time.time()  # Keep compatibility
-        
-        save_data()
-        
-        return jsonify({"success": True, "nickname": nickname, "userId": user_id})
-        
-    except Exception as e:
-        print(f"Error in set_nickname: {str(e)}")
-        return jsonify({"error": "Server error"}), 500
-
-@app.route("/get_user", methods=["GET"])
-def get_user():
-    user_id = request.args.get("userId")
-    if user_id in nicknames:
-        return jsonify({"success": True, "user": nicknames[user_id]})
-    return jsonify({"success": False, "user": None})
-
-@app.route("/channels")
-def get_channels():
-    cleanup_messages()
-    channel_list = []
-    
-    # Get regular channels (not DMs)
-    for channel_id, channel in channels.items():
-        if not channel.get("is_dm", False):  # Only non-DM channels
-            channel_list.append({
-                "id": channel_id,
-                "name": channel["name"],
-                "type": channel["type"],
-                "code": channel.get("code"),
-                "message_count": len(channel["messages"]),
-                "last_activity": channel["last_activity"],
-                "is_system": channel.get("is_system", False)
-            })
-    
-    return jsonify(channel_list)
-
-@app.route("/get_dm_channels", methods=["GET"])
-def get_dm_channels():
-    """Get DM channels for a specific user"""
-    user_id = request.args.get("userId")
-    if not user_id:
-        return jsonify({"error": "User ID required"}), 400
-    
-    cleanup_messages()
-    
-    dm_channels = []
-    for channel_id, channel in channels.items():
-        if channel.get("is_dm", False) and user_id in channel["dm_users"]:
-            # Get the other user's nickname for display
-            other_user_id = next(uid for uid in channel["dm_users"] if uid != user_id)
-            other_nickname = nicknames.get(other_user_id, {}).get("nickname", "Unknown")
-            
-            dm_channels.append({
-                "id": channel_id,
-                "name": f"💬 {other_nickname}",
-                "type": "dm",
-                "message_count": len(channel["messages"]),
-                "last_activity": channel["last_activity"],
-                "other_user": other_nickname,
-                "other_user_id": other_user_id
-            })
-    
-    return jsonify({"dm_channels": dm_channels})
-
-@app.route("/create_dm", methods=["POST"])
-def create_dm():
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "No data provided"}), 400
-            
-        user_id = data.get("userId", "").strip()
-        target_nickname = data.get("targetNickname", "").strip()
-        
-        if not user_id or not target_nickname:
-            return jsonify({"error": "User ID and target nickname are required"}), 400
-        
-        cleanup_messages()
-        
-        # Find target user by nickname
-        target_user_id = get_user_by_nickname(target_nickname)
-        if not target_user_id:
-            return jsonify({"error": "User not found"}), 404
-        
-        # Can't create DM with yourself
-        if target_user_id == user_id:
-            return jsonify({"error": "You cannot create a DM with yourself"}), 400
-        
-        # Create or get existing DM channel
-        channel_id = create_dm_channel(user_id, target_user_id)
-        
-        return jsonify({
-            "success": True,
-            "channel": {
-                "id": channel_id,
-                "name": channels[channel_id]["name"],
-                "type": "dm"
-            }
-        })
-        
-    except Exception as e:
-        print(f"Error in create_dm: {str(e)}")
-        return jsonify({"error": "Server error"}), 500
-
-@app.route("/create_channel", methods=["POST"])
-def create_channel():
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "No data provided"}), 400
-            
-        name = data.get("name", "").strip()
-        channel_type = data.get("type", "public")
-        message_lifetime = int(data.get("messageLifetime", 300))
-        user_id = data.get("userId", "").strip()
-        custom_code = data.get("customCode", "").strip()
-        
-        if not name or not user_id:
-            return jsonify({"error": "Channel name and user ID are required"}), 400
-        if len(name) > 50:
-            return jsonify({"error": "Channel name must be 50 characters or less"}), 400
-        if contains_banned_content(name):
-            return jsonify({"error": "Channel name contains inappropriate content"}), 400
-        if message_lifetime < 60 or message_lifetime > 86400:
-            return jsonify({"error": "Message lifetime must be between 1 minute and 24 hours"}), 400
-        
-        # Add validation for custom codes
-        if channel_type == "private":
-            if not custom_code or len(custom_code) != 6:
-                return jsonify({"error": "Private channels require a 6-character code"}), 400
-            if not custom_code.isalnum():
-                return jsonify({"error": "Channel code must contain only letters and numbers"}), 400
-        
-        cleanup_messages()
-        
-        channel_id = name.lower().replace(" ", "-") + "-" + ''.join(random.choices(string.ascii_lowercase + string.digits, k=4))
-        
-        # Use custom code if provided, otherwise generate random
-        if channel_type == "private":
-            code = custom_code.upper() if custom_code else generate_channel_code()
-        else:
-            code = None
-        
-        channels[channel_id] = {
-            "id": channel_id,
-            "name": name,
-            "type": channel_type,
-            "code": code,
-            "messages": [],
-            "created_at": time.time(),
-            "last_activity": time.time(),
-            "message_lifetime": message_lifetime,
-            "creator": user_id,
-            "members": {user_id},  # Creator automatically becomes a member
-            "is_system": False  # Mark as user-created channel
+        [data-theme="dark"] {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --accent-primary: #3b82f6;
+            --accent-hover: #60a5fa;
+            --border-color: #475569;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
         }
-        
-        save_data()
-        
-        return jsonify({
-            "success": True,
-            "channel": {
-                "id": channel_id,
-                "name": name,
-                "type": channel_type,
-                "code": code
-            }
-        })
-        
-    except Exception as e:
-        print(f"Error in create_channel: {str(e)}")
-        return jsonify({"error": "Server error"}), 500
 
-@app.route("/join_channel", methods=["POST"])
-def join_channel():
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "No data provided"}), 400
+        [data-theme="blue"] {
+            --bg-primary: #dbeafe;
+            --bg-secondary: #eff6ff;
+            --bg-tertiary: #bfdbfe;
+            --text-primary: #1e3a8a;
+            --text-secondary: #3730a3;
+            --accent-primary: #1d4ed8;
+            --accent-hover: #1e40af;
+            --border-color: #93c5fd;
+            --shadow: 0 4px 6px -1px rgba(29, 78, 216, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(29, 78, 216, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .mobile-menu-btn {
+            display: none;
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: var(--accent-primary);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            z-index: 101;
+            font-size: 12px;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 300px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--shadow);
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-hover));
+            color: white;
+        }
+
+        .sidebar-header h1 {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .sidebar-header p {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .sidebar-content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        /* Search Bar */
+        .search-container {
+            margin-bottom: 20px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .search-input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .channel-section {
+            margin-bottom: 25px;
+        }
+
+        .section-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        .channel-item {
+            padding: 12px 16px;
+            margin-bottom: 4px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .channel-item:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .channel-item.active {
+            background: var(--accent-primary);
+            color: white;
+        }
+
+        .channel-item.hidden {
+            display: none;
+        }
+
+        .channel-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .channel-name {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .channel-meta {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 2px;
+        }
+
+        .channel-badge {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: var(--success-color);
+            color: white;
+        }
+
+        .channel-badge.private {
+            background: var(--danger-color);
+        }
+
+        .channel-badge.dm {
+            background: var(--accent-primary);
+        }
+
+        .delete-channel-btn {
+            background: var(--danger-color);
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            transition: all 0.2s ease;
+        }
+
+        .delete-channel-btn:hover {
+            background: #dc2626;
+            transform: scale(1.1);
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .action-btn {
+            padding: 10px;
+            background: var(--success-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .action-btn.secondary {
+            background: var(--warning-color);
+        }
+
+        /* Main Chat Area */
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .chat-meta {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .theme-selector {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .theme-btn {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .theme-btn:hover {
+            background: var(--accent-primary);
+            color: white;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: var(--bg-primary);
+        }
+
+        .message-wrapper {
+            margin-bottom: 16px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .message-wrapper.new-message {
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message-wrapper.self {
+            align-items: flex-end;
+        }
+
+        .message-wrapper.other {
+            align-items: flex-start;
+        }
+
+        .nickname {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+            padding: 0 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .bubble {
+            max-width: 75%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            word-wrap: break-word;
+            font-size: 14px;
+            line-height: 1.4;
+            box-shadow: var(--shadow);
+            position: relative;
+        }
+
+        .bubble.self {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-hover));
+            color: white;
+        }
+
+        .bubble.other {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .timestamp {
+            font-size: 10px;
+            opacity: 0.7;
+            margin-top: 4px;
+        }
+
+        .chat-input {
+            display: flex;
+            padding: 20px;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            gap: 12px;
+        }
+
+        .chat-input input {
+            flex: 1;
+            padding: 14px 18px;
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            outline: none;
+            font-size: 14px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+        }
+
+        .chat-input input:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .chat-input button {
+            padding: 14px 24px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-hover));
+            border: none;
+            border-radius: 12px;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow);
+        }
+
+        .chat-input button:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .chat-input button:disabled {
+            background: var(--text-secondary);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-content {
+            background: var(--bg-secondary);
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 16px;
+            width: 500px;
+            max-width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border-color);
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .modal h2 {
+            color: var(--text-primary);
+            font-size: 24px;
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+
+        .modal p {
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .modal input, .modal select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+        }
+
+        .modal input:focus, .modal select:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .modal button {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-hover));
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-right: 10px;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow);
+        }
+
+        .modal button:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .modal button:disabled {
+            background: var(--text-secondary);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .modal button.secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .char-counter {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .char-counter.warning {
+            color: var(--danger-color);
+        }
+
+        .code-display {
+            background: var(--bg-tertiary);
+            padding: 12px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+            margin: 10px 0;
+            border: 2px dashed var(--border-color);
+        }
+
+        .custom-code-input {
+            margin-top: 10px;
+        }
+
+        .custom-code-input input {
+            font-family: monospace;
+            font-size: 16px;
+            text-align: center;
+            letter-spacing: 2px;
+        }
+
+        .error-message {
+            background: #fef2f2;
+            color: #dc2626;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border: 1px solid #fecaca;
+            font-size: 14px;
+        }
+
+        .success-message {
+            background: #f0fdf4;
+            color: #16a34a;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border: 1px solid #bbf7d0;
+            font-size: 14px;
+        }
+
+        /* Scrollbar Styling */
+        .sidebar-content::-webkit-scrollbar,
+        .chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .sidebar-content::-webkit-scrollbar-track,
+        .chat-messages::-webkit-scrollbar-track {
+            background: var(--bg-tertiary);
+            border-radius: 3px;
+        }
+
+        .sidebar-content::-webkit-scrollbar-thumb,
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: var(--text-secondary);
+            border-radius: 3px;
+        }
+
+        .sidebar-content::-webkit-scrollbar-thumb:hover,
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-primary);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .mobile-menu-btn {
+                display: block;
+            }
+
+            .sidebar {
+                width: 100%;
+                position: fixed;
+                left: -100%;
+                z-index: 100;
+                transition: left 0.3s ease;
+            }
             
-        channel_id = data.get("channelId", "").strip()
-        code = data.get("code", "").strip()
-        user_id = data.get("userId", "").strip()
-        
-        if not channel_id:
-            return jsonify({"error": "Channel ID is required"}), 400
-        
-        cleanup_messages()
-        
-        if channel_id not in channels:
-            return jsonify({"error": "Channel not found"}), 404
-        
-        channel = channels[channel_id]
-        
-        # For DM channels, check if user is one of the DM participants
-        if channel.get("is_dm", False):
-            if user_id not in channel["dm_users"]:
-                return jsonify({"error": "You are not part of this direct message"}), 403
-        
-        # Check if private channel requires code
-        elif channel["type"] == "private":
-            # Check if user is already a member
-            if user_id in channel["members"]:
-                # User is already a member, no need for code
-                pass
-            else:
-                # New user needs to provide code
-                if not code:
-                    return jsonify({"error": "Private channel requires a code to join"}), 403
-                if channel["code"] != code.upper():
-                    return jsonify({"error": "Invalid channel code"}), 403
+            .sidebar.open {
+                left: 0;
+            }
+            
+            .chat-area {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body data-theme="light">
+    <!-- Mobile Menu Button -->
+    <button class="mobile-menu-btn" onclick="toggleSidebar()">☰ Menu</button>
+
+    <!-- Nickname Modal -->
+    <div id="nicknameModal" class="modal">
+        <div class="modal-content">
+            <h2>🌟 Welcome!</h2>
+            <p>Choose a nickname to join the conversation</p>
+            <div id="nicknameError" class="error-message" style="display: none;"></div>
+            <div class="form-group">
+                <input type="text" id="nicknameInput" placeholder="Enter your nickname..." maxlength="25" />
+                <div class="char-counter" id="charCounter">0/25 characters</div>
+            </div>
+            <button id="setNicknameBtn" onclick="setNickname()">Join Chat</button>
+        </div>
+    </div>
+
+    <!-- Create Channel Modal -->
+    <div id="createChannelModal" class="modal">
+        <div class="modal-content">
+            <h2>Create New Channel</h2>
+            <p>Set up your new chat channel</p>
+            <div id="createChannelError" class="error-message" style="display: none;"></div>
+            <div id="createChannelSuccess" class="success-message" style="display: none;"></div>
+            
+            <div class="form-group">
+                <label class="form-label">Channel Name</label>
+                <input type="text" id="channelNameInput" placeholder="Enter channel name..." maxlength="50" />
+                <div class="char-counter" id="nameCounter">0/50 characters</div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Channel Type</label>
+                <select id="channelTypeSelect">
+                    <option value="public">🌍 Public - Anyone can join</option>
+                    <option value="private"> Private - Requires code to join</option>
+                </select>
+            </div>
+            
+            <div id="channelCodeDisplay" style="display: none;">
+                <label class="form-label">Channel Code</label>
+                <div class="form-group">
+                    <input type="text" id="customCodeInput" placeholder="Enter custom code (6 characters)..." maxlength="6" class="custom-code-input" />
+                    <div style="margin-top: 10px;">
+                        <button type="button" onclick="generateRandomCode()" style="font-size: 12px; padding: 8px 12px;">🎲 Generate Random</button>
+                    </div>
+                </div>
+                <div class="code-display" id="generatedCode"></div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Message Lifetime</label>
+                <select id="messageLifetimeSelect">
+                    <option value="60">1 minute</option>
+                    <option value="300" selected>5 minutes</option>
+                    <option value="900">15 minutes</option>
+                    <option value="1800">30 minutes</option>
+                    <option value="3600">1 hour</option>
+                    <option value="7200">2 hours</option>
+                    <option value="21600">6 hours</option>
+                    <option value="43200">12 hours</option>
+                    <option value="86400">24 hours</option>
+                </select>
+            </div>
+            
+            <button id="createChannelBtn" onclick="createChannel()">Create Channel</button>
+            <button class="secondary" onclick="closeModal('createChannelModal')">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Join Private Channel Modal -->
+    <div id="joinChannelModal" class="modal">
+        <div class="modal-content">
+            <h2>Join Private Channel</h2>
+            <p>Enter the channel code to join a private channel</p>
+            <div id="joinChannelError" class="error-message" style="display: none;"></div>
+            
+            <div class="form-group">
+                <label class="form-label">Channel Code</label>
+                <input type="text" id="channelCodeInput" placeholder="Enter 6-character code..." maxlength="6" />
+            </div>
+            
+            <button id="joinChannelBtn" onclick="joinPrivateChannel()">Join Channel</button>
+            <button class="secondary" onclick="closeModal('joinChannelModal')">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Create Direct Message Modal -->
+    <div id="createDmModal" class="modal">
+        <div class="modal-content">
+            <h2>💬 Start Direct Message</h2>
+            <p>Enter the nickname of the person you want to message</p>
+            <div id="createDmError" class="error-message" style="display: none;"></div>
+            <div id="createDmSuccess" class="success-message" style="display: none;"></div>
+            
+            <div class="form-group">
+                <label class="form-label">Their Nickname</label>
+                <input type="text" id="targetNicknameInput" placeholder="Enter their nickname..." maxlength="25" />
+            </div>
+            
+            <button id="createDmBtn" onclick="createDirectMessage()">Start Chat</button>
+            <button class="secondary" onclick="closeModal('createDmModal')">Cancel</button>
+        </div>
+    </div>
+
+    <!-- User Search Modal -->
+    <div id="userSearchModal" class="modal">
+        <div class="modal-content">
+            <h2>👥 Find Users</h2>
+            <p>Search for users to start a direct message with</p>
+            
+            <div class="form-group">
+                <label class="form-label">Search Users</label>
+                <input type="text" id="userSearchInput" placeholder="Type to search users..." />
+            </div>
+            
+            <div id="userSearchResults" style="max-height: 300px; overflow-y: auto;">
+                <!-- Users will be populated here -->
+            </div>
+            
+            <button class="secondary" onclick="closeModal('userSearchModal')">Close</button>
+        </div>
+    </div>
+
+    <!-- Change Username Modal -->
+    <div id="changeUsernameModal" class="modal">
+        <div class="modal-content">
+            <h2>✏️ Change Username</h2>
+            <p>Enter a new nickname for your account</p>
+            <div id="changeUsernameError" class="error-message" style="display: none;"></div>
+            <div id="changeUsernameSuccess" class="success-message" style="display: none;"></div>
+            
+            <div class="form-group">
+                <label class="form-label">New Nickname</label>
+                <input type="text" id="newUsernameInput" placeholder="Enter new nickname..." maxlength="25" />
+                <div class="char-counter" id="newUsernameCounter">0/25 characters</div>
+            </div>
+            
+            <button id="changeUsernameBtn" onclick="changeUsername()">Change Username</button>
+            <button class="secondary" onclick="closeModal('changeUsernameModal')">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h1>TMAchat</h1>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <p id="userInfo">Welcome! Set your nickname to get started</p>
+                    <button id="changeUsernameBtn" onclick="openChangeUsernameModal()" style="
+                        background: rgba(255, 255, 255, 0.2);
+                        border: 1px solid rgba(255, 255, 255, 0.3);
+                        color: white;
+                        padding: 4px 8px;
+                        border-radius: 4px;
+                        cursor: pointer;
+                        font-size: 10px;
+                        transition: all 0.2s ease;
+                    ">✏️</button>
+                </div>
+            </div>
+            
+            <div class="sidebar-content">
+                <!-- Search Bar -->
+                <div class="search-container">
+                    <input type="text" id="channelSearch" class="search-input" placeholder="🔍 Search channels..." />
+                </div>
                 
-                # Add user to members when they successfully join with code
-                channel["members"].add(user_id)
-        
-        # Update last activity when someone joins
-        channel["last_activity"] = time.time()
-        save_data()
-        
-        return jsonify({
-            "success": True,
-            "channel": {
-                "id": channel_id,
-                "name": channel["name"],
-                "type": channel["type"],
-                "messageLifetime": channel["message_lifetime"]
-            }
-        })
-        
-    except Exception as e:
-        print(f"Error in join_channel: {str(e)}")
-        return jsonify({"error": "Server error"}), 500
+                <div class="channel-section">
+                    <div class="section-title">Channels</div>
+                    <div id="channelList">
+                        <!-- Channels will be populated here -->
+                    </div>
+                </div>
+                
+                <div class="channel-section">
+                    <div class="section-title">Direct Messages</div>
+                    <div id="dmList">
+                        <!-- DM channels will be populated here -->
+                    </div>
+                </div>
+                
+                <div class="action-buttons">
+                    <button class="action-btn" onclick="openModal('createChannelModal')">
+                        ➕ Create Channel
+                    </button>
+                    <button class="action-btn secondary" onclick="openModal('joinChannelModal')">
+                        🔐 Join Private Channel
+                    </button>
+                    <button class="action-btn" onclick="openModal('createDmModal')" style="background: var(--accent-primary);">
+                        💬 Direct Message
+                    </button>
+                    <button class="action-btn" onclick="openModal('userSearchModal')" style="background: var(--text-secondary);">
+                        👥 Find Users
+                    </button>
+                </div>
+            </div>
+        </div>
 
-@app.route("/messages/<channel_id>")
-def get_messages(channel_id):
-    cleanup_messages()
-    
-    if channel_id not in channels:
-        return jsonify({"error": "Channel not found"}), 404
-    
-    channel = channels[channel_id]
-    return jsonify([{
-        "text": m["text"], 
-        "nickname": m["nickname"], 
-        "userId": m["userId"],
-        "timestamp": m["time"]
-    } for m in channel["messages"]])
-
-@app.route("/send", methods=["POST"])
-def send_message():
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "No data provided"}), 400
+        <!-- Main Chat Area -->
+        <div class="chat-area">
+            <div class="chat-header">
+                <div class="chat-info">
+                    <div class="chat-title" id="chatTitle">Select a channel</div>
+                    <div class="chat-meta" id="chatMeta">Choose a channel from the sidebar to start chatting</div>
+                </div>
+                <div class="theme-selector">
+                    <button class="theme-btn" onclick="setTheme('light')">☀️ Light</button>
+                    <button class="theme-btn" onclick="setTheme('dark')">🌙 Dark</button>
+                    <button class="theme-btn" onclick="setTheme('blue')">💙 Blue</button>
+                </div>
+            </div>
             
-        text = data.get("text", "").strip()
-        user_id = data.get("userId", "").strip()
-        nickname = data.get("nickname", "").strip()
-        channel_id = data.get("channelId", "main").strip()
-        
-        if not text:
-            return jsonify({"error": "Message cannot be empty"}), 400
-        if not user_id or not nickname:
-            return jsonify({"error": "User ID and nickname are required"}), 400
-        if contains_banned_content(text):
-            return jsonify({"error": "Message contains inappropriate content"}), 400
-        
-        cleanup_messages()
-        
-        if channel_id not in channels:
-            return jsonify({"error": "Channel not found"}), 404
-        
-        channel = channels[channel_id]
-        
-        # For DM channels, check if user is one of the DM participants
-        if channel.get("is_dm", False):
-            if user_id not in channel["dm_users"]:
-                return jsonify({"error": "You are not part of this direct message"}), 403
-        
-        # For private channels, check if user is a member
-        elif channel["type"] == "private" and user_id not in channel["members"]:
-            return jsonify({"error": "You are not a member of this private channel"}), 403
-        
-        # Update nickname and channel activity
-        nicknames[user_id] = {"nickname": nickname, "time": time.time()}
-        channel["last_activity"] = time.time()
-        
-        # Add message to channel
-        message = {
-            "text": text, 
-            "nickname": nickname,
-            "userId": user_id,
-            "time": time.time()
+            <div class="chat-messages" id="chatMessages">
+                <div style="text-align: center; color: var(--text-secondary); margin-top: 50px;">
+                    <h3>Welcome to Multi-Chat!</h3>
+                    <p>Select a channel to start chatting or create your own</p>
+                </div>
+            </div>
+            
+            <div class="chat-input">
+                <input type="text" id="messageInput" placeholder="Type your message..." disabled />
+                <button id="sendBtn" onclick="sendMessage()" disabled>Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = {
+            id: localStorage.getItem('chat-user-id') || Math.random().toString(36).substr(2, 9),
+            nickname: null
+        };
+        let currentChannel = null;
+        let messageInterval = null;
+        let lastMessageCount = 0;
+        let allChannels = []; // Store all channels for search functionality
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if user already has a nickname stored
+            checkExistingUser();
+            
+            loadChannels();
+            
+            // Setup event listeners
+            document.getElementById('messageInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+
+            // Search functionality
+            document.getElementById('channelSearch').addEventListener('input', function(e) {
+                filterChannels(e.target.value);
+            });
+
+            // Character counters
+            document.getElementById('nicknameInput').addEventListener('input', function(e) {
+                const counter = document.getElementById('charCounter');
+                const length = e.target.value.length;
+                counter.textContent = `${length}/25 characters`;
+                counter.className = length > 20 ? 'char-counter warning' : 'char-counter';
+            });
+
+            document.getElementById('channelNameInput').addEventListener('input', function(e) {
+                const counter = document.getElementById('nameCounter');
+                const length = e.target.value.length;
+                counter.textContent = `${length}/50 characters`;
+                counter.className = length > 45 ? 'char-counter warning' : 'char-counter';
+            });
+
+            // Channel type change handler
+            document.getElementById('channelTypeSelect').addEventListener('change', function(e) {
+                const codeDisplay = document.getElementById('channelCodeDisplay');
+                if (e.target.value === 'private') {
+                    codeDisplay.style.display = 'block';
+                    generateRandomCode();
+                } else {
+                    codeDisplay.style.display = 'none';
+                }
+            });
+
+            // Custom code input handler
+            document.getElementById('customCodeInput').addEventListener('input', function(e) {
+                const value = e.target.value.toUpperCase();
+                e.target.value = value;
+                document.getElementById('generatedCode').textContent = value;
+            });
+
+            // Character counter for new username input
+            document.getElementById('newUsernameInput').addEventListener('input', function(e) {
+                const counter = document.getElementById('newUsernameCounter');
+                const length = e.target.value.length;
+                counter.textContent = `${length}/25 characters`;
+                counter.className = length > 20 ? 'char-counter warning' : 'char-counter';
+            });
+
+            // User search input handler
+            document.getElementById('userSearchInput').addEventListener('input', function(e) {
+                const query = e.target.value.trim();
+                if (query === '') {
+                    loadAllUsers(); // Show all users when search is empty
+                } else {
+                    searchUsers(query); // Search users as you type
+                }
+            });
+        });
+
+        // Check if user already has a nickname stored
+        async function checkExistingUser() {
+            try {
+                const response = await fetch(`/get_user?userId=${currentUser.id}`);
+                const data = await response.json();
+                
+                if (data.success && data.user) {
+                    // User already has a nickname, use it
+                    currentUser.nickname = data.user.nickname;
+                    document.getElementById('userInfo').textContent = `Welcome back ${data.user.nickname}!`;
+                    
+                    // Don't show nickname modal if user already has one
+                    closeModal('nicknameModal');
+                    
+                    // Enable message input if we're in a channel
+                    if (currentChannel) {
+                        document.getElementById('messageInput').disabled = false;
+                        document.getElementById('sendBtn').disabled = false;
+                    }
+                } else {
+                    // New user, show nickname modal
+                    openModal('nicknameModal');
+                }
+            } catch (error) {
+                console.error('Error checking existing user:', error);
+                // Fallback: show nickname modal
+                openModal('nicknameModal');
+            }
+        }
+
+        // Utility functions
+        function generateChannelCode() {
+            return Math.random().toString(36).substr(2, 6).toUpperCase();
+        }
+
+        function generateRandomCode() {
+            const code = generateChannelCode();
+            document.getElementById('customCodeInput').value = code;
+            document.getElementById('generatedCode').textContent = code;
+        }
+
+        function formatTime(timestamp) {
+            const date = new Date(timestamp * 1000);
+            return date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        }
+
+        function showError(elementId, message) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.style.display = 'block';
+            setTimeout(() => {
+                element.style.display = 'none';
+            }, 5000);
+        }
+
+        function showSuccess(elementId, message) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.style.display = 'block';
+            setTimeout(() => {
+                element.style.display = 'none';
+            }, 3000);
+        }
+
+        // Search functionality
+        function filterChannels(searchTerm) {
+            const channelItems = document.querySelectorAll('.channel-item');
+            const searchLower = searchTerm.toLowerCase();
+            
+            channelItems.forEach(item => {
+                const channelName = item.querySelector('.channel-name').textContent.toLowerCase();
+                const channelMeta = item.querySelector('.channel-meta').textContent.toLowerCase();
+                
+                if (channelName.includes(searchLower) || channelMeta.includes(searchLower)) {
+                    item.classList.remove('hidden');
+                } else {
+                    item.classList.add('hidden');
+                }
+            });
+        }
+
+        // Modal functions
+        function openModal(modalId) {
+            document.getElementById(modalId).style.display = 'block';
+            
+            // If opening user search modal, load all users
+            if (modalId === 'userSearchModal') {
+                loadAllUsers();
+            }
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        // Theme functions
+        function setTheme(theme) {
+            document.body.setAttribute('data-theme', theme);
+            localStorage.setItem('chat-theme', theme);
+        }
+
+        // Load saved theme
+        const savedTheme = localStorage.getItem('chat-theme');
+        if (savedTheme) {
+            setTheme(savedTheme);
+        }
+
+        // Mobile sidebar toggle
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+        }
+
+        // Nickname functions
+        async function setNickname() {
+            const nickname = document.getElementById('nicknameInput').value.trim();
+            
+            if (!nickname) {
+                showError('nicknameError', 'Please enter a nickname');
+                return;
+            }
+
+            try {
+                const response = await fetch('/set_nickname', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        userId: currentUser.id,
+                        nickname: nickname
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    if (data.error === "Nickname already taken") {
+                        showError('nicknameError', 'Nickname already taken. Please try a different one.');
+                        // Clear the input to let them try again
+                        document.getElementById('nicknameInput').value = '';
+                        document.getElementById('charCounter').textContent = '0/25 characters';
+                        document.getElementById('charCounter').className = 'char-counter';
+                    } else {
+                        showError('nicknameError', data.error);
+                    }
+                    return;
+                }
+
+                // Use the nickname from the response
+                currentUser.nickname = data.nickname;
+                
+                // Save user ID to localStorage so it persists
+                localStorage.setItem('chat-user-id', currentUser.id);
+                
+                document.getElementById('userInfo').textContent = `Welcome ${data.nickname}!`;
+                closeModal('nicknameModal');
+                
+                // Enable message input for main channel
+                if (currentChannel) {
+                    document.getElementById('messageInput').disabled = false;
+                    document.getElementById('sendBtn').disabled = false;
+                }
+
+            } catch (error) {
+                console.error('Error setting nickname:', error);
+                showError('nicknameError', 'Failed to set nickname. Please try again.');
+            }
+        }
+
+        // Function to open change username modal
+        function openChangeUsernameModal() {
+            // Pre-fill current username
+            document.getElementById('newUsernameInput').value = currentUser.nickname || '';
+            
+            // Update character counter
+            const counter = document.getElementById('newUsernameCounter');
+            const length = currentUser.nickname ? currentUser.nickname.length : 0;
+            counter.textContent = `${length}/25 characters`;
+            counter.className = length > 20 ? 'char-counter warning' : 'char-counter';
+            
+            openModal('changeUsernameModal');
+        }
+
+        // Function to change username
+        async function changeUsername() {
+            const newUsername = document.getElementById('newUsernameInput').value.trim();
+            
+            if (!newUsername) {
+                showError('changeUsernameError', 'Please enter a new nickname');
+                return;
+            }
+
+            if (newUsername === currentUser.nickname) {
+                showError('changeUsernameError', 'That\'s already your current nickname');
+                return;
+            }
+
+            try {
+                const response = await fetch('/set_nickname', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        userId: currentUser.id,
+                        nickname: newUsername
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    if (data.error === "Nickname already taken") {
+                        showError('changeUsernameError', 'Nickname already taken. Please try a different one.');
+                        // Clear the input to let them try again
+                        document.getElementById('newUsernameInput').value = '';
+                        document.getElementById('newUsernameCounter').textContent = '0/25 characters';
+                        document.getElementById('newUsernameCounter').className = 'char-counter';
+                    } else {
+                        showError('changeUsernameError', data.error);
+                    }
+                    return;
+                }
+
+                // Update the user's nickname
+                currentUser.nickname = data.nickname;
+                
+                // Update the display
+                document.getElementById('userInfo').textContent = `Welcome ${data.nickname}!`;
+                
+                // Show success message
+                showSuccess('changeUsernameSuccess', 'Username changed successfully!');
+                
+                // Close modal after a short delay
+                setTimeout(() => {
+                    closeModal('changeUsernameModal');
+                }, 1500);
+
+            } catch (error) {
+                console.error('Error changing username:', error);
+                showError('changeUsernameError', 'Failed to change username. Please try again.');
+            }
+        }
+
+        // User search functions
+        async function loadAllUsers() {
+            try {
+                const response = await fetch('/search_users');
+                const data = await response.json();
+                
+                displayUserSearchResults(data.users);
+            } catch (error) {
+                console.error('Error loading users:', error);
+            }
+        }
+
+        async function searchUsers(query) {
+            try {
+                const response = await fetch(`/search_users?query=${encodeURIComponent(query)}`);
+                const data = await response.json();
+                
+                displayUserSearchResults(data.users);
+            } catch (error) {
+                console.error('Error searching users:', error);
+            }
+        }
+
+        function displayUserSearchResults(users) {
+            const resultsContainer = document.getElementById('userSearchResults');
+            
+            if (users.length === 0) {
+                resultsContainer.innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 20px;">No users found</div>';
+                return;
+            }
+            
+            resultsContainer.innerHTML = '';
+            
+            users.forEach(user => {
+                if (user.userId === currentUser.id) return; // Don't show current user
+                
+                const userItem = document.createElement('div');
+                userItem.style.cssText = `
+                    padding: 12px;
+                    border: 1px solid var(--border-color);
+                    border-radius: 8px;
+                    margin-bottom: 8px;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    background: var(--bg-primary);
+                `;
+                
+                userItem.onmouseenter = function() {
+                    this.style.background = 'var(--bg-tertiary)';
+                };
+                
+                userItem.onmouseleave = function() {
+                    this.style.background = 'var(--bg-primary)';
+                };
+                
+                userItem.onclick = function() {
+                    // Start DM with this user
+                    startDmWithUser(user.nickname);
+                };
+                
+                userItem.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-weight: 600; color: var(--text-primary);">${user.nickname}</div>
+                            <div style="font-size: 12px; color: var(--text-secondary);">Click to start DM</div>
+                        </div>
+                        <button onclick="startDmWithUser('${user.nickname}')" style="
+                            background: var(--accent-primary);
+                            color: white;
+                            border: none;
+                            padding: 6px 12px;
+                            border-radius: 6px;
+                            cursor: pointer;
+                            font-size: 12px;
+                        ">💬</button>
+                    </div>
+                `;
+                
+                resultsContainer.appendChild(userItem);
+            });
+        }
+
+        function startDmWithUser(nickname) {
+            // Close user search modal
+            closeModal('userSearchModal');
+            
+            // Pre-fill the DM modal with the selected user
+            document.getElementById('targetNicknameInput').value = nickname;
+            
+            // Open the DM creation modal
+            openModal('createDmModal');
+        }
+
+        // Direct Message functions
+        async function createDirectMessage() {
+            const targetNickname = document.getElementById('targetNicknameInput').value.trim();
+            
+            if (!targetNickname) {
+                showError('createDmError', 'Please enter a nickname');
+                return;
+            }
+
+            if (!currentUser.nickname) {
+                showError('createDmError', 'Please set a nickname first');
+                return;
+            }
+
+            try {
+                const response = await fetch('/create_dm', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        userId: currentUser.id,
+                        targetNickname: targetNickname
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    showError('createDmError', data.error);
+                    return;
+                }
+
+                showSuccess('createDmSuccess', 'Direct message created!');
+                closeModal('createDmModal');
+                
+                // Clear form
+                document.getElementById('targetNicknameInput').value = '';
+                
+                // Reload channels and DMs
+                loadChannels();
+                loadDmChannels();
+
+            } catch (error) {
+                console.error('Error creating DM:', error);
+                showError('createDmError', 'Failed to create direct message. Please try again.');
+            }
+        }
+
+        async function loadDmChannels() {
+            try {
+                const response = await fetch(`/get_dm_channels?userId=${currentUser.id}`);
+                const data = await response.json();
+
+                if (data.error) {
+                    console.error('Error loading DM channels:', data.error);
+                    return;
+                }
+
+                const dmList = document.getElementById('dmList');
+                dmList.innerHTML = '';
+
+                if (data.dm_channels.length === 0) {
+                    dmList.innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 20px; font-size: 12px;">No direct messages yet</div>';
+                    return;
+                }
+
+                data.dm_channels.forEach(dm => {
+                    const dmItem = document.createElement('div');
+                    dmItem.className = `channel-item ${currentChannel === dm.id ? 'active' : ''}`;
+                    dmItem.onclick = () => joinChannel(dm.id);
+
+                    dmItem.innerHTML = `
+                        <div class="channel-info">
+                            <div class="channel-name">${dm.name}</div>
+                            <div class="channel-meta">${dm.message_count} messages</div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div class="channel-badge dm">💬</div>
+
+                <button class="delete-channel-btn" onclick="deleteChannel('${dm.id}', event)">🗑️</button>
+                        </div>
+                    `;
+
+                    dmList.appendChild(dmItem);
+                });
+
+            } catch (error) {
+                console.error('Error loading DM channels:', error);
+            }
+        }
+
+        // Channel functions
+        async function loadChannels() {
+            try {
+                const response = await fetch('/channels');
+                allChannels = await response.json();
+
+                const channelList = document.getElementById('channelList');
+                channelList.innerHTML = '';
+
+                allChannels.forEach(channel => {
+                    const channelItem = document.createElement('div');
+                    channelItem.className = `channel-item ${currentChannel === channel.id ? 'active' : ''}`;
+                    channelItem.onclick = () => joinChannel(channel.id);
+
+                    // Add delete button for non-system channels
+                    const deleteButton = !channel.is_system ? 
+                        `<button class="delete-channel-btn" onclick="deleteChannel('${channel.id}', event)">��️</button>` : '';
+
+                    channelItem.innerHTML = `
+                        <div class="channel-info">
+                            <div class="channel-name">${channel.name}</div>
+                            <div class="channel-meta">${channel.message_count} messages</div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div class="channel-badge ${channel.type}">${channel.type === 'private' ? '🔒' : '🌍'}</div>
+                            ${deleteButton}
+                        </div>
+                    `;
+
+                    channelList.appendChild(channelItem);
+                });
+
+                // Auto-select main channel if no channel is selected
+                if (!currentChannel && allChannels.length > 0) {
+                    const mainChannel = allChannels.find(c => c.id === 'main');
+                    if (mainChannel) {
+                        joinChannel('main');
+                    }
+                }
+
+                // Also load DM channels
+                loadDmChannels();
+
+            } catch (error) {
+                console.error('Error loading channels:', error);
+            }
+        }
+
+        async function createChannel() {
+            const name = document.getElementById('channelNameInput').value.trim();
+            const type = document.getElementById('channelTypeSelect').value;
+            const messageLifetime = parseInt(document.getElementById('messageLifetimeSelect').value);
+            const customCode = document.getElementById('customCodeInput').value.trim();
+
+            if (!name) {
+                showError('createChannelError', 'Please enter a channel name');
+                return;
+            }
+
+            if (!currentUser.nickname) {
+                showError('createChannelError', 'Please set a nickname first');
+                return;
+            }
+
+            if (type === 'private' && (!customCode || customCode.length !== 6)) {
+                showError('createChannelError', 'Please enter a 6-character code for private channels');
+                return;
+            }
+
+            try {
+                const response = await fetch('/create_channel', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        name: name,
+                        type: type,
+                        messageLifetime: messageLifetime,
+                        userId: currentUser.id,
+                        customCode: customCode
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    showError('createChannelError', data.error);
+                    return;
+                }
+
+                showSuccess('createChannelSuccess', 'Channel created successfully!');
+                closeModal('createChannelModal');
+                
+                // Clear form
+                document.getElementById('channelNameInput').value = '';
+                document.getElementById('channelTypeSelect').value = 'public';
+                document.getElementById('messageLifetimeSelect').value = '300';
+                document.getElementById('channelCodeDisplay').style.display = 'none';
+                document.getElementById('customCodeInput').value = '';
+                
+                // Reload channels
+                loadChannels();
+
+            } catch (error) {
+                console.error('Error creating channel:', error);
+                showError('createChannelError', 'Failed to create channel. Please try again.');
+            }
+        }
+
+        async function joinChannel(channelId) {
+            try {
+                const response = await fetch('/join_channel', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        channelId: channelId,
+                        code: '',
+                        userId: currentUser.id
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    showError('joinChannelError', data.error);
+                    return;
+                }
+
+                currentChannel = channelId;
+                document.getElementById('chatTitle').textContent = data.channel.name;
+                document.getElementById('chatMeta').textContent = `Channel type: ${data.channel.type}`;
+                
+                // Update sidebar active state - IMPROVED VERSION
+                document.querySelectorAll('.channel-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                
+                // Find and activate the clicked channel item by matching channel ID
+                const channelItems = document.querySelectorAll('.channel-item');
+                channelItems.forEach((item, index) => {
+                    if (allChannels[index] && allChannels[index].id === channelId) {
+                        item.classList.add('active');
+                    }
+                });
+                
+                // Enable message input if user has nickname
+                if (currentUser.nickname) {
+                    document.getElementById('messageInput').disabled = false;
+                    document.getElementById('sendBtn').disabled = false;
+                }
+                
+                // Load messages immediately
+                loadMessages(channelId);
+                
+                // Start message polling
+                startMessagePolling(channelId);
+
+            } catch (error) {
+                console.error('Error joining channel:', error);
+                showError('joinChannelError', 'Failed to join channel. Please try again.');
+            }
+        }
+
+        async function joinPrivateChannel() {
+            const code = document.getElementById('channelCodeInput').value.trim();
+            
+            if (!code) {
+                showError('joinChannelError', 'Please enter a channel code');
+                return;
+            }
+
+            try {
+                // Find channel by code
+                const response = await fetch('/channels');
+                const channels = await response.json();
+                
+                // Look for private channel with matching code
+                let privateChannel = null;
+                for (let channel of channels) {
+                    if (channel.type === 'private' && channel.code === code.toUpperCase()) {
+                        privateChannel = channel;
+                        break;
+                    }
+                }
+                
+                if (!privateChannel) {
+                    showError('joinChannelError', 'Invalid channel code or channel not found');
+                    return;
+                }
+
+                // Join the channel using the join_channel endpoint
+                const joinResponse = await fetch('/join_channel', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        channelId: privateChannel.id,
+                        code: code.toUpperCase(),
+                        userId: currentUser.id
+                    })
+                });
+
+                const joinData = await joinResponse.json();
+
+                if (joinData.error) {
+                    showError('joinChannelError', joinData.error);
+                    return;
+                }
+
+                // Successfully joined, now switch to the channel
+                currentChannel = privateChannel.id;
+                document.getElementById('chatTitle').textContent = privateChannel.name;
+                document.getElementById('chatMeta').textContent = `Channel type: ${privateChannel.type}`;
+                
+                // Update sidebar active state
+                document.querySelectorAll('.channel-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                
+                // Find and activate the channel item
+                const channelItems = document.querySelectorAll('.channel-item');
+                for (let item of channelItems) {
+                    if (item.onclick && item.onclick.toString().includes(privateChannel.id)) {
+                        item.classList.add('active');
+                        break;
+                    }
+                }
+                
+                // Enable message input if user has nickname
+                if (currentUser.nickname) {
+                    document.getElementById('messageInput').disabled = false;
+                    document.getElementById('sendBtn').disabled = false;
+                }
+                
+                // Load messages immediately
+                loadMessages(privateChannel.id);
+                
+                // Start message polling
+                startMessagePolling(privateChannel.id);
+                
+                closeModal('joinChannelModal');
+                document.getElementById('channelCodeInput').value = '';
+
+            } catch (error) {
+                console.error('Error joining private channel:', error);
+                showError('joinChannelError', 'Failed to join private channel. Please try again.');
+            }
+        }
+
+        async function loadMessages(channelId) {
+            try {
+                const response = await fetch(`/messages/${channelId}`);
+                const messages = await response.json();
+
+                const chatMessages = document.getElementById('chatMessages');
+                
+                // Only reload if message count changed AND we're in the right channel
+                if (messages.length !== lastMessageCount && currentChannel === channelId) {
+                    chatMessages.innerHTML = '';
+
+                    if (messages.length === 0) {
+                        chatMessages.innerHTML = `
+                            <div style="text-align: center; color: var(--text-secondary); margin-top: 50px;">
+                                <h3>No messages yet</h3>
+                                <p>Be the first to send a message in this channel!</p>
+                            </div>
+                        `;
+                        lastMessageCount = 0;
+                        return;
+                    }
+
+                    messages.forEach((message, index) => {
+                        const messageWrapper = document.createElement('div');
+                        messageWrapper.className = `message-wrapper ${message.userId === currentUser.id ? 'self' : 'other'}`;
+                        
+                        // Only animate new messages (not on initial load)
+                        if (index === messages.length - 1 && messages.length > lastMessageCount) {
+                            messageWrapper.classList.add('new-message');
+                        }
+                        
+                        messageWrapper.innerHTML = `
+                            <div class="nickname">${message.nickname}</div>
+                            <div class="bubble ${message.userId === currentUser.id ? 'self' : 'other'}">
+                                ${message.text}
+                                <div class="timestamp">${formatTime(message.timestamp)}</div>
+                            </div>
+                        `;
+                        
+                        chatMessages.appendChild(messageWrapper);
+                    });
+
+                    lastMessageCount = messages.length;
+                    
+                    // Scroll to bottom
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                }
+
+            } catch (error) {
+                console.error('Error loading messages:', error);
+            }
+        }
+
+        function startMessagePolling(channelId) {
+            if (messageInterval) {
+                clearInterval(messageInterval);
+            }
+            
+            messageInterval = setInterval(() => {
+                if (currentChannel === channelId) {
+                    loadMessages(channelId);
+                }
+            }, 3000); // Poll every 3 seconds
+        }
+
+        async function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const text = messageInput.value.trim();
+            
+            if (!text) {
+                return;
+            }
+
+            if (!currentChannel) {
+                showError('nicknameError', 'Please select a channel first');
+                return;
+            }
+
+            if (!currentUser.nickname) {
+                showError('nicknameError', 'Please set a nickname first');
+                return;
+            }
+
+            try {
+                const response = await fetch('/send', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        text: text,
+                        userId: currentUser.id,
+                        nickname: currentUser.nickname,
+                        channelId: currentChannel
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    showError('nicknameError', data.error);
+                    return;
+                }
+
+                // Clear input and reload messages
+                messageInput.value = '';
+                loadMessages(currentChannel);
+
+            } catch (error) {
+                console.error('Error sending message:', error);
+                showError('nicknameError', 'Failed to send message. Please try again.');
+            }
+        }
+
+        async function deleteChannel(channelId, event) {
+            event.stopPropagation(); // Prevent channel selection
+            
+            if (!confirm('Are you sure you want to delete this channel? This action cannot be undone.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/delete_channel', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        channelId: channelId,
+                        userId: currentUser.id
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    showError('nicknameError', data.error);
+                    return;
+                }
+
+                // If we were in the deleted channel, switch to main
+                if (currentChannel === channelId) {
+                    currentChannel = 'main';
+                    document.getElementById('chatTitle').textContent = 'Main Chat';
+                    document.getElementById('chatMeta').textContent = 'Channel type: public';
+                    loadMessages('main');
+                    startMessagePolling('main');
+                }
+                
+                // Reload channels to update the list
+                loadChannels();
+                
+                showSuccess('nicknameError', 'Channel deleted successfully!');
+
+            } catch (error) {
+                console.error('Error deleting channel:', error);
+                showError('nicknameError', 'Failed to delete channel. Please try again.');
+            }
+        }
+
+        // Global admin code detection
+        let adminCodeBuffer = '';
+        let adminCodeTimeout;
+
+        document.addEventListener('keydown', function(event) {
+            // Only listen for number keys
+            if (event.key >= '0' && event.key <= '9') {
+                adminCodeBuffer += event.key;
+                
+                // Clear the buffer after 3 seconds of inactivity
+                clearTimeout(adminCodeTimeout);
+                adminCodeTimeout = setTimeout(() => {
+                    adminCodeBuffer = '';
+                }, 3000);
+                
+                // Check if the code matches
+                if (adminCodeBuffer === '68651') {
+                    adminCodeBuffer = ''; // Reset buffer
+                    openAdminPanel();
+                }
+                
+                // Keep buffer at max 5 digits
+                if (adminCodeBuffer.length > 5) {
+                    adminCodeBuffer = adminCodeBuffer.slice(-5);
+                }
+            }
+        });
+
+        // Function to open admin panel
+        function openAdminPanel() {
+            // Open admin panel in new tab/window
+            window.open('/admin', '_blank');
+            
+            // Optional: Show a subtle notification
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: var(--accent-primary);
+                color: white;
+                padding: 10px 20px;
+                border-radius: 8px;
+                z-index: 10000;
+                font-size: 14px;
+                box-shadow: var(--shadow-lg);
+            `;
+            notification.textContent = ' Admin panel opened';
+            document.body.appendChild(notification);
+            
+            // Remove notification after 3 seconds
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
         }
         
-        channel["messages"].append(message)
-        save_data()
-        
-        return jsonify({"success": True, "message": message})
-        
-    except Exception as e:
-        print(f"Error in send_message: {str(e)}")
-        return jsonify({"error": "Server error"}), 500
-
-@app.route("/delete_channel", methods=["POST"])
-def delete_channel():
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "No data provided"}), 400
-            
-        channel_id = data.get("channelId", "").strip()
-        user_id = data.get("userId", "").strip()
-        
-        if not channel_id or not user_id:
-            return jsonify({"error": "Channel ID and user ID are required"}), 400
-        
-        if channel_id == "main":
-            return jsonify({"error": "Cannot delete the main channel"}), 403
-        
-        cleanup_messages()
-        
-        if channel_id not in channels:
-            return jsonify({"error": "Channel not found"}), 404
-        
-        channel = channels[channel_id]
-        
-        # For DM channels, check if user is one of the DM participants
-        if channel.get("is_dm", False):
-            if user_id not in channel["dm_users"]:
-                return jsonify({"error": "You are not part of this direct message"}), 403
-        
-        # For regular channels, check if user is a member
-        elif user_id not in channel["members"]:
-            return jsonify({"error": "You are not a member of this channel"}), 403
-        
-        # Delete the channel
-        del channels[channel_id]
-        save_data()
-        
-        return jsonify({"success": True})
-        
-    except Exception as e:
-        print(f"Error in delete_channel: {str(e)}")
-        return jsonify({"error": "Server error"}), 500
-
-@app.route("/channel_info/<channel_id>")
-def get_channel_info(channel_id):
-    cleanup_messages()
-    
-    if channel_id not in channels:
-        return jsonify({"error": "Channel not found"}), 404
-    
-    channel = channels[channel_id]
-    return jsonify({
-        "id": channel_id,
-        "name": channel["name"],
-        "type": channel["type"],
-        "code": channel.get("code"),
-        "messageLifetime": channel["message_lifetime"],
-        "messageCount": len(channel["messages"]),
-        "lastActivity": channel["last_activity"],
-        "creator": channel["creator"],
-        "is_system": channel.get("is_system", False)
-    })
-
-# ===== ADMIN ENDPOINTS =====
-
-@app.route("/admin/users")
-def get_users():
-    cleanup_messages()
-    user_list = []
-    for user_id, user_data in nicknames.items():
-        user_list.append({
-            "userId": user_id,
-            "nickname": user_data["nickname"],
-            "time": user_data["time"]
-        })
-    return jsonify(user_list)
-
-@app.route("/admin/delete_user", methods=["POST"])
-def delete_user():
-    data = request.get_json()
-    user_id = data.get("userId")
-    
-    if user_id in nicknames:
-        del nicknames[user_id]
-        # Remove user from all channels
-        for channel in channels.values():
-            if "members" in channel and user_id in channel["members"]:
-                channel["members"].remove(user_id)
-            if "dm_users" in channel and user_id in channel["dm_users"]:
-                channel["dm_users"].remove(user_id)
-        save_data()
-        return jsonify({"success": True})
-    
-    return jsonify({"error": "User not found"}), 404
-
-@app.route("/admin/delete_message", methods=["POST"])
-def delete_message():
-    data = request.get_json()
-    channel_id = data.get("channelId")
-    message_id = data.get("messageId")
-    
-    if channel_id not in channels:
-        return jsonify({"error": "Channel not found"}), 404
-    
-    channel = channels[channel_id]
-    message_found = False
-    
-    for i, message in enumerate(channel["messages"]):
-        if message["id"] == message_id:
-            del channel["messages"][i]
-            message_found = True
-            break
-    
-    if message_found:
-        save_data()
-        return jsonify({"success": True})
-    
-    return jsonify({"error": "Message not found"}), 404
-
-@app.route("/admin/delete_channel", methods=["POST"])
-def delete_channel_admin():
-    data = request.get_json()
-    channel_id = data.get("channelId")
-    
-    if channel_id not in channels:
-        return jsonify({"error": "Channel not found"}), 404
-    
-    # Admin can delete any channel
-    del channels[channel_id]
-    save_data()
-    
-    return jsonify({"success": True})
-
-@app.route("/admin/delete_channel", methods=["POST"])
-def admin_delete_channel():
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "No data provided"}), 400
-            
-        channel_id = data.get("channelId", "").strip()
-        admin_password = data.get("adminPassword", "").strip()
-        
-        if not channel_id or not admin_password:
-            return jsonify({"error": "Channel ID and admin password are required"}), 400
-        
-        if admin_password != "admin123":  # Change this to your desired password
-            return jsonify({"error": "Invalid admin password"}), 403
-        
-        if channel_id == "main":
-            return jsonify({"error": "Cannot delete the main channel"}), 403
-        
-        cleanup_messages()
-        
-        if channel_id not in channels:
-            return jsonify({"error": "Channel not found"}), 404
-        
-        # Delete the channel
-        del channels[channel_id]
-        save_data()
-        
-        return jsonify({"success": True, "message": "Channel deleted successfully"})
-        
-    except Exception as e:
-        print(f"Error in admin_delete_channel: {str(e)}")
-        return jsonify({"error": "Server error"}), 500
-
-@app.route("/admin/clear_channel", methods=["POST"])
-def admin_clear_channel():
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "No data provided"}), 400
-            
-        channel_id = data.get("channelId", "").strip()
-        admin_password = data.get("adminPassword", "").strip()
-        
-        if not channel_id or not admin_password:
-            return jsonify({"error": "Channel ID and admin password are required"}), 400
-        
-        if admin_password != "admin123":  # Change this to your desired password
-            return jsonify({"error": "Invalid admin password"}), 403
-        
-        cleanup_messages()
-        
-        if channel_id not in channels:
-            return jsonify({"error": "Channel not found"}), 404
-        
-        # Clear all messages from the channel
-        channels[channel_id]["messages"] = []
-        save_data()
-        
-        return jsonify({"success": True, "message": "Channel cleared successfully"})
-        
-    except Exception as e:
-        print(f"Error in admin_clear_channel: {str(e)}")
-        return jsonify({"error": "Server error"}), 500
-
-@app.route("/admin/delete_message", methods=["POST"])
-def admin_delete_message():
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "No data provided"}), 400
-            
-        channel_id = data.get("channelId", "").strip()
-        timestamp = data.get("timestamp", "").strip()
-        admin_password = data.get("adminPassword", "").strip()
-        
-        if not channel_id or not timestamp or not admin_password:
-            return jsonify({"error": "Channel ID, timestamp, and admin password are required"}), 400
-        
-        if admin_password != "admin123":  # Change this to your desired password
-            return jsonify({"error": "Invalid admin password"}), 403
-        
-        cleanup_messages()
-        
-        if channel_id not in channels:
-            return jsonify({"error": "Channel not found"}), 404
-        
-        # Find and remove the message
-        channel = channels[channel_id]
-        original_count = len(channel["messages"])
-        channel["messages"] = [m for m in channel["messages"] if m["time"] != float(timestamp)]
-        
-        if len(channel["messages"]) == original_count:
-            return jsonify({"error": "Message not found"}), 404
-        
-        save_data()
-        return jsonify({"success": True, "message": "Message deleted successfully"})
-        
-    except Exception as e:
-        print(f"Error in admin_delete_message: {str(e)}")
-        return jsonify({"error": "Server error"}), 500
-
-@app.route("/admin/ban_user", methods=["POST"])
-def admin_ban_user():
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "No data provided"}), 400
-            
-        user_id = data.get("userId", "").strip()
-        admin_password = data.get("adminPassword", "").strip()
-        
-        if not user_id or not admin_password:
-            return jsonify({"error": "User ID and admin password are required"}), 400
-        
-        if admin_password != "admin123":  # Change this to your desired password
-            return jsonify({"error": "Invalid admin password"}), 403
-        
-        # Remove user from nicknames (effectively banning them)
-        if user_id in nicknames:
-            del nicknames[user_id]
-        
-        # Remove user from all channel members and DM channels
-        for channel in channels.values():
-            if "members" in channel and user_id in channel["members"]:
-                channel["members"].remove(user_id)
-            if "dm_users" in channel and user_id in channel["dm_users"]:
-                channel["dm_users"].remove(user_id)
-        
-        save_data()
-        return jsonify({"success": True, "message": "User banned successfully"})
-        
-    except Exception as e:
-        print(f"Error in admin_ban_user: {str(e)}")
-        return jsonify({"error": "Server error"}), 500
-
-if __name__ == "__main__":
-    load_data()
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    </script>
+</body>
+</html>
