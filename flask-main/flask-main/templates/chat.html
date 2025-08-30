@@ -1377,8 +1377,67 @@
                 showError('nicknameError', 'Failed to delete channel. Please try again.');
             }
         }
+
+        // Global admin code detection
+let adminCodeBuffer = '';
+let adminCodeTimeout;
+
+document.addEventListener('keydown', function(event) {
+    // Only listen for number keys
+    if (event.key >= '0' && event.key <= '9') {
+        adminCodeBuffer += event.key;
+        
+        // Clear the buffer after 3 seconds of inactivity
+        clearTimeout(adminCodeTimeout);
+        adminCodeTimeout = setTimeout(() => {
+            adminCodeBuffer = '';
+        }, 3000);
+        
+        // Check if the code matches
+        if (adminCodeBuffer === '68651') {
+            adminCodeBuffer = ''; // Reset buffer
+            openAdminPanel();
+        }
+        
+        // Keep buffer at max 5 digits
+        if (adminCodeBuffer.length > 5) {
+            adminCodeBuffer = adminCodeBuffer.slice(-5);
+        }
+    }
+});
+
+// Function to open admin panel
+function openAdminPanel() {
+    // Open admin panel in new tab/window
+    window.open('/admin', '_blank');
+    
+    // Optional: Show a subtle notification
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: var(--accent-primary);
+        color: white;
+        padding: 10px 20px;
+        border-radius: 8px;
+        z-index: 10000;
+        font-size: 14px;
+        box-shadow: var(--shadow-lg);
+    `;
+    notification.textContent = '�� Admin panel opened';
+    document.body.appendChild(notification);
+    
+    // Remove notification after 3 seconds
+    setTimeout(() => {
+        notification.remove();
+    }, 3000);
+}
+
+        
     </script>
 </body>
 </html>
+
 
 
