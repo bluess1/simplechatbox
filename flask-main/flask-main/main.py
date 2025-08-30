@@ -74,6 +74,44 @@ def is_nickname_unique(nickname):
             return False
     return True
 
+def create_dm_channel(user1_id, user2_id):
+    """Create a direct message channel between two users"""
+    # Sort user IDs to ensure consistent channel naming
+    sorted_users = sorted([user1_id, user2_id])
+    channel_id = f"dm_{sorted_users[0]}_{sorted_users[1]}"
+    
+    # Get nicknames for display
+    user1_nickname = nicknames.get(user1_id, {}).get("nickname", "Unknown")
+    user2_nickname = nicknames.get(user2_id, {}).get("nickname", "Unknown")
+    
+    if channel_id not in channels:
+        channels[channel_id] = {
+            "id": channel_id,
+            "name": f"�� {user1_nickname} & {user2_nickname}",
+            "type": "dm",  # New type for direct messages
+            "code": None,
+            "messages": [],
+            "created_at": time.time(),
+            "last_activity": time.time(),
+            "message_lifetime": 86400,  # 24 hours for DMs
+            "creator": user1_id,
+            "members": {user1_id, user2_id},
+            "is_system": False,
+            "is_dm": True,  # Mark as direct message
+            "dm_users": {user1_id, user2_id}  # Store the two users
+        }
+        save_data()
+    
+    return channel_id
+
+def get_user_by_nickname(nickname):
+    """Find user ID by nickname (case-insensitive)"""
+    nickname_lower = nickname.lower()
+    for user_id, user_data in nicknames.items():
+        if user_data["nickname"].lower() == nickname_lower:
+            return user_id
+    return None
+
 def cleanup_messages():
     """Remove old messages and inactive channels"""
     now = time.time()
@@ -89,7 +127,8 @@ def cleanup_messages():
         channel["messages"] = [m for m in channel["messages"] if now - m["time"] < channel["message_lifetime"]]
         
         # Remove inactive user-created channels after 12 hours (43200 seconds)
-        if not channel.get("is_system", False):  # Only check user-created channels
+        # But don't remove DM channels
+        if not channel.get("is_system", False) and not channel.get("is_dm", False):
             if now - channel["last_activity"] > 43200:  # 12 hours
                 channels_to_remove.append(channel_id)
                 print(f"Auto-deleting inactive channel: {channel['name']} (ID: {channel_id})")
@@ -108,6 +147,8 @@ def save_data():
     for channel_id, channel in channels.items():
         channel_copy = channel.copy()
         channel_copy["members"] = list(channel["members"])
+        if "dm_users" in channel_copy:
+            channel_copy["dm_users"] = list(channel_copy["dm_users"])
         data_to_save["channels"][channel_id] = channel_copy
     
     data_to_save["nicknames"] = nicknames
@@ -127,6 +168,8 @@ def load_data():
         # Convert lists back to sets
         for channel_id, channel in data["channels"].items():
             channel["members"] = set(channel["members"])
+            if "dm_users" in channel:
+                channel["dm_users"] = set(channel["dm_users"])
             channels[channel_id] = channel
             
         nicknames = data["nicknames"]
@@ -198,17 +241,89 @@ def get_user():
 def get_channels():
     cleanup_messages()
     channel_list = []
+    
+    # Get regular channels (not DMs)
     for channel_id, channel in channels.items():
-        channel_list.append({
-            "id": channel_id,
-            "name": channel["name"],
-            "type": channel["type"],
-            "code": channel.get("code"),
-            "message_count": len(channel["messages"]),
-            "last_activity": channel["last_activity"],
-            "is_system": channel.get("is_system", False)
-        })
+        if not channel.get("is_dm", False):  # Only non-DM channels
+            channel_list.append({
+                "id": channel_id,
+                "name": channel["name"],
+                "type": channel["type"],
+                "code": channel.get("code"),
+                "message_count": len(channel["messages"]),
+                "last_activity": channel["last_activity"],
+                "is_system": channel.get("is_system", False)
+            })
+    
     return jsonify(channel_list)
+
+@app.route("/get_dm_channels", methods=["GET"])
+def get_dm_channels():
+    """Get DM channels for a specific user"""
+    user_id = request.args.get("userId")
+    if not user_id:
+        return jsonify({"error": "User ID required"}), 400
+    
+    cleanup_messages()
+    
+    dm_channels = []
+    for channel_id, channel in channels.items():
+        if channel.get("is_dm", False) and user_id in channel["dm_users"]:
+            # Get the other user's nickname for display
+            other_user_id = next(uid for uid in channel["dm_users"] if uid != user_id)
+            other_nickname = nicknames.get(other_user_id, {}).get("nickname", "Unknown")
+            
+            dm_channels.append({
+                "id": channel_id,
+                "name": f"💬 {other_nickname}",
+                "type": "dm",
+                "message_count": len(channel["messages"]),
+                "last_activity": channel["last_activity"],
+                "other_user": other_nickname,
+                "other_user_id": other_user_id
+            })
+    
+    return jsonify({"dm_channels": dm_channels})
+
+@app.route("/create_dm", methods=["POST"])
+def create_dm():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+            
+        user_id = data.get("userId", "").strip()
+        target_nickname = data.get("targetNickname", "").strip()
+        
+        if not user_id or not target_nickname:
+            return jsonify({"error": "User ID and target nickname are required"}), 400
+        
+        cleanup_messages()
+        
+        # Find target user by nickname
+        target_user_id = get_user_by_nickname(target_nickname)
+        if not target_user_id:
+            return jsonify({"error": "User not found"}), 404
+        
+        # Can't create DM with yourself
+        if target_user_id == user_id:
+            return jsonify({"error": "You cannot create a DM with yourself"}), 400
+        
+        # Create or get existing DM channel
+        channel_id = create_dm_channel(user_id, target_user_id)
+        
+        return jsonify({
+            "success": True,
+            "channel": {
+                "id": channel_id,
+                "name": channels[channel_id]["name"],
+                "type": "dm"
+            }
+        })
+        
+    except Exception as e:
+        print(f"Error in create_dm: {str(e)}")
+        return jsonify({"error": "Server error"}), 500
 
 @app.route("/create_channel", methods=["POST"])
 def create_channel():
@@ -300,8 +415,13 @@ def join_channel():
         
         channel = channels[channel_id]
         
+        # For DM channels, check if user is one of the DM participants
+        if channel.get("is_dm", False):
+            if user_id not in channel["dm_users"]:
+                return jsonify({"error": "You are not part of this direct message"}), 403
+        
         # Check if private channel requires code
-        if channel["type"] == "private":
+        elif channel["type"] == "private":
             # Check if user is already a member
             if user_id in channel["members"]:
                 # User is already a member, no need for code
@@ -373,14 +493,20 @@ def send_message():
         if channel_id not in channels:
             return jsonify({"error": "Channel not found"}), 404
         
-        # For private channels, check if user is a member
         channel = channels[channel_id]
-        if channel["type"] == "private" and user_id not in channel["members"]:
+        
+        # For DM channels, check if user is one of the DM participants
+        if channel.get("is_dm", False):
+            if user_id not in channel["dm_users"]:
+                return jsonify({"error": "You are not part of this direct message"}), 403
+        
+        # For private channels, check if user is a member
+        elif channel["type"] == "private" and user_id not in channel["members"]:
             return jsonify({"error": "You are not a member of this private channel"}), 403
         
         # Update nickname and channel activity
         nicknames[user_id] = {"nickname": nickname, "time": time.time()}
-        channels[channel_id]["last_activity"] = time.time()
+        channel["last_activity"] = time.time()
         
         # Add message to channel
         message = {
@@ -390,7 +516,7 @@ def send_message():
             "time": time.time()
         }
         
-        channels[channel_id]["messages"].append(message)
+        channel["messages"].append(message)
         save_data()
         
         return jsonify({"success": True, "message": message})
@@ -422,8 +548,13 @@ def delete_channel():
         
         channel = channels[channel_id]
         
-        # Check if user is a member of the channel
-        if user_id not in channel["members"]:
+        # For DM channels, check if user is one of the DM participants
+        if channel.get("is_dm", False):
+            if user_id not in channel["dm_users"]:
+                return jsonify({"error": "You are not part of this direct message"}), 403
+        
+        # For regular channels, check if user is a member
+        elif user_id not in channel["members"]:
             return jsonify({"error": "You are not a member of this channel"}), 403
         
         # Delete the channel
@@ -481,6 +612,8 @@ def delete_user():
         for channel in channels.values():
             if "members" in channel and user_id in channel["members"]:
                 channel["members"].remove(user_id)
+            if "dm_users" in channel and user_id in channel["dm_users"]:
+                channel["dm_users"].remove(user_id)
         save_data()
         return jsonify({"success": True})
     
@@ -646,10 +779,12 @@ def admin_ban_user():
         if user_id in nicknames:
             del nicknames[user_id]
         
-        # Remove user from all channel members
+        # Remove user from all channel members and DM channels
         for channel in channels.values():
             if "members" in channel and user_id in channel["members"]:
                 channel["members"].remove(user_id)
+            if "dm_users" in channel and user_id in channel["dm_users"]:
+                channel["dm_users"].remove(user_id)
         
         save_data()
         return jsonify({"success": True, "message": "User banned successfully"})
