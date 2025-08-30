@@ -707,55 +707,58 @@
         </div>
     </div>
 
-    <!-- Join Private Channel Modal -->
-    <div id="joinChannelModal" class="modal">
-        <div class="modal-content">
-            <h2>Join Private Channel</h2>
-            <p>Enter the channel code to join a private channel</p>
-            <div id="joinChannelError" class="error-message" style="display: none;"></div>
-            
-            <div class="form-group">
-                <label class="form-label">Channel Code</label>
-                <input type="text" id="channelCodeInput" placeholder="Enter 6-character code..." maxlength="6" />
-            </div>
-            
-            <button id="joinChannelBtn" onclick="joinPrivateChannel()">Join Channel</button>
-            <button class="secondary" onclick="closeModal('joinChannelModal')">Cancel</button>
+<!-- ... existing modals ... -->
+
+<!-- Join Private Channel Modal -->
+<div id="joinChannelModal" class="modal">
+    <!-- ... existing content ... -->
+</div>
+
+<!-- Change Username Modal -->
+<div id="changeUsernameModal" class="modal">
+    <div class="modal-content">
+        <h2>✏️ Change Username</h2>
+        <p>Enter a new nickname for your account</p>
+        <div id="changeUsernameError" class="error-message" style="display: none;"></div>
+        <div id="changeUsernameSuccess" class="success-message" style="display: none;"></div>
+        
+        <div class="form-group">
+            <label class="form-label">New Nickname</label>
+            <input type="text" id="newUsernameInput" placeholder="Enter new nickname..." maxlength="25" />
+            <div class="char-counter" id="newUsernameCounter">0/25 characters</div>
         </div>
+        
+        <button id="changeUsernameBtn" onclick="changeUsername()">Change Username</button>
+        <button class="secondary" onclick="closeModal('changeUsernameModal')">Cancel</button>
     </div>
+</div>
+
+<!-- ... rest of your HTML ... -->
 
     <!-- Main App -->
     <div class="app-container">
         <!-- Sidebar -->
         <div class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <h1>TMAchat</h1>
-                <p id="userInfo">Welcome! Set your nickname to get started</p>
-            </div>
-            
-            <div class="sidebar-content">
-                <!-- Search Bar -->
-                <div class="search-container">
-                    <input type="text" id="channelSearch" class="search-input" placeholder="🔍 Search channels..." />
-                </div>
-                
-                <div class="channel-section">
-                    <div class="section-title">Channels</div>
-                    <div id="channelList">
-                        <!-- Channels will be populated here -->
-                    </div>
-                </div>
-                
-                <div class="action-buttons">
-                    <button class="action-btn" onclick="openModal('createChannelModal')">
-                        ➕ Create Channel
-                    </button>
-                    <button class="action-btn secondary" onclick="openModal('joinChannelModal')">
-                        🔐 Join Private Channel
-                    </button>
-                </div>
-            </div>
-        </div>
+           <!-- ... existing code ... -->
+
+<div class="sidebar-header">
+    <h1>TMAchat</h1>
+    <div style="display: flex; align-items: center; gap: 10px;">
+        <p id="userInfo">Welcome! Set your nickname to get started</p>
+        <button id="changeUsernameBtn" onclick="openChangeUsernameModal()" style="
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            transition: all 0.2s ease;
+        ">✏️</button>
+    </div>
+</div>
+
+<!-- ... existing code ... -->
 
         <!-- Main Chat Area -->
         <div class="chat-area">
@@ -786,10 +789,16 @@
     </div>
 
     <script>
-        let currentUser = {
-            id: Math.random().toString(36).substr(2, 9),
-            nickname: null
-        };
+
+        // ... existing code ...
+
+let currentUser = {
+    id: localStorage.getItem('chat-user-id') || Math.random().toString(36).substr(2, 9),
+    nickname: null
+};
+
+// ... existing code ...
+      
         let currentChannel = null;
         let messageInterval = null;
         let lastMessageCount = 0;
@@ -840,6 +849,16 @@
                 }
             });
 
+
+                document.getElementById('newUsernameInput').addEventListener('input', function(e) {
+        const counter = document.getElementById('newUsernameCounter');
+        const length = e.target.value.length;
+        counter.textContent = `${length}/25 characters`;
+        counter.className = length > 20 ? 'char-counter warning' : 'char-counter';
+    });
+});
+
+
             // Custom code input handler
             document.getElementById('customCodeInput').addEventListener('input', function(e) {
                 const value = e.target.value.toUpperCase();
@@ -848,36 +867,43 @@
             });
         });
 
-        // Check if user already has a nickname stored
-        async function checkExistingUser() {
-            try {
-                const response = await fetch(`/get_user?userId=${currentUser.id}`);
-                const data = await response.json();
-                
-                if (data.success && data.user) {
-                    // User already has a nickname, use it
-                    currentUser.nickname = data.user.nickname;
-                    document.getElementById('userInfo').textContent = `Welcome back ${data.user.nickname}!`;
-                    
-                    // Don't show nickname modal if user already has one
-                    // closeModal('nicknameModal'); // Uncomment this line if you want to skip the modal
-                    
-                    // Enable message input if we're in a channel
-                    if (currentChannel) {
-                        document.getElementById('messageInput').disabled = false;
-                        document.getElementById('sendBtn').disabled = false;
-                    }
-                } else {
-                    // New user, show nickname modal
-                    openModal('nicknameModal');
-                }
-            } catch (error) {
-                console.error('Error checking existing user:', error);
-                // Fallback: show nickname modal
-                openModal('nicknameModal');
-            }
-        }
 
+        
+
+        // Check if user already has a nickname stored
+        // ... existing code ...
+
+// Check if user already has a nickname stored
+async function checkExistingUser() {
+    try {
+        const response = await fetch(`/get_user?userId=${currentUser.id}`);
+        const data = await response.json();
+        
+        if (data.success && data.user) {
+            // User already has a nickname, use it
+            currentUser.nickname = data.user.nickname;
+            document.getElementById('userInfo').textContent = `Welcome back ${data.user.nickname}!`;
+            
+            // Don't show nickname modal if user already has one
+            closeModal('nicknameModal'); // Now this will work!
+            
+            // Enable message input if we're in a channel
+            if (currentChannel) {
+                document.getElementById('messageInput').disabled = false;
+                document.getElementById('sendBtn').disabled = false;
+            }
+        } else {
+            // New user, show nickname modal
+            openModal('nicknameModal');
+        }
+    } catch (error) {
+        console.error('Error checking existing user:', error);
+        // Fallback: show nickname modal
+        openModal('nicknameModal');
+    }
+}
+
+// ... existing code ...
         // Utility functions
         function generateChannelCode() {
             return Math.random().toString(36).substr(2, 6).toUpperCase();
@@ -956,49 +982,57 @@
         }
 
         // Nickname functions
-        async function setNickname() {
-            const nickname = document.getElementById('nicknameInput').value.trim();
-            
-            if (!nickname) {
-                showError('nicknameError', 'Please enter a nickname');
-                return;
-            }
+// ... existing code ...
 
-            try {
-                const response = await fetch('/set_nickname', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        userId: currentUser.id,
-                        nickname: nickname
-                    })
-                });
+async function setNickname() {
+    const nickname = document.getElementById('nicknameInput').value.trim();
+    
+    if (!nickname) {
+        showError('nicknameError', 'Please enter a nickname');
+        return;
+    }
 
-                const data = await response.json();
+    try {
+        const response = await fetch('/set_nickname', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: currentUser.id,
+                nickname: nickname
+            })
+        });
 
-                if (data.error) {
-                    showError('nicknameError', data.error);
-                    return;
-                }
+        const data = await response.json();
 
-                // Use the nickname from the response (in case it was modified for uniqueness)
-                currentUser.nickname = data.nickname;
-                document.getElementById('userInfo').textContent = `Welcome ${data.nickname}!`;
-                closeModal('nicknameModal');
-                
-                // Enable message input for main channel
-                if (currentChannel) {
-                    document.getElementById('messageInput').disabled = false;
-                    document.getElementById('sendBtn').disabled = false;
-                }
-
-            } catch (error) {
-                console.error('Error setting nickname:', error);
-                showError('nicknameError', 'Failed to set nickname. Please try again.');
-            }
+        if (data.error) {
+            showError('nicknameError', data.error);
+            return;
         }
+
+        // Use the nickname from the response (in case it was modified for uniqueness)
+        currentUser.nickname = data.nickname;
+        
+        // Save user ID to localStorage so it persists
+        localStorage.setItem('chat-user-id', currentUser.id);
+        
+        document.getElementById('userInfo').textContent = `Welcome ${data.nickname}!`;
+        closeModal('nicknameModal');
+        
+        // Enable message input for main channel
+        if (currentChannel) {
+            document.getElementById('messageInput').disabled = false;
+            document.getElementById('sendBtn').disabled = false;
+        }
+
+    } catch (error) {
+        console.error('Error setting nickname:', error);
+        showError('nicknameError', 'Failed to set nickname. Please try again.');
+    }
+}
+
+// ... existing code ...
 
         // Channel functions
         async function loadChannels() {
@@ -1465,7 +1499,84 @@
                 notification.remove();
             }, 3000);
         }
+
+                // ... existing code ...
+
+        // Function to open change username modal
+        function openChangeUsernameModal() {
+            // Pre-fill current username
+            document.getElementById('newUsernameInput').value = currentUser.nickname || '';
+            
+            // Update character counter
+            const counter = document.getElementById('newUsernameCounter');
+            const length = currentUser.nickname ? currentUser.nickname.length : 0;
+            counter.textContent = `${length}/25 characters`;
+            counter.className = length > 20 ? 'char-counter warning' : 'char-counter';
+            
+            openModal('changeUsernameModal');
+        }
+
+        // Function to change username
+        async function changeUsername() {
+            const newUsername = document.getElementById('newUsernameInput').value.trim();
+            
+            if (!newUsername) {
+                showError('changeUsernameError', 'Please enter a new nickname');
+                return;
+            }
+
+            if (newUsername === currentUser.nickname) {
+                showError('changeUsernameError', 'That\'s already your current nickname');
+                return;
+            }
+
+            try {
+                const response = await fetch('/set_nickname', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        userId: currentUser.id,
+                        nickname: newUsername
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    showError('changeUsernameError', data.error);
+                    return;
+                }
+
+                // Update the user's nickname
+                currentUser.nickname = data.nickname;
+                
+                // Update the display
+                document.getElementById('userInfo').textContent = `Welcome ${data.nickname}!`;
+                
+                // Show success message
+                showSuccess('changeUsernameSuccess', 'Username changed successfully!');
+                
+                // Close modal after a short delay
+                setTimeout(() => {
+                    closeModal('changeUsernameModal');
+                }, 1500);
+
+            } catch (error) {
+                console.error('Error changing username:', error);
+                showError('changeUsernameError', 'Failed to change username. Please try again.');
+            }
+        }
         
     </script>
 </body>
 </html>
+
+
+        
+        
+    </script>
+</body>
+</html>
+
