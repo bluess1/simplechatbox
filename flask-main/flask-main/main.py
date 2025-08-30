@@ -67,18 +67,12 @@ def generate_id():
     return ''.join(random.choices(string.ascii_letters + string.digits, k=8))
 
 def is_nickname_unique(nickname):
-    return nickname not in [user["nickname"] for user in nicknames.values()]
-
-def generate_unique_nickname(base_nickname):
-    if is_nickname_unique(base_nickname):
-        return base_nickname
-    
-    counter = 1
-    while True:
-        new_nickname = f"{base_nickname}{counter}"
-        if is_nickname_unique(new_nickname):
-            return new_nickname
-        counter += 1
+    # Convert to lowercase for case-insensitive comparison
+    nickname_lower = nickname.lower()
+    for user_data in nicknames.values():
+        if user_data["nickname"].lower() == nickname_lower:
+            return False
+    return True
 
 def cleanup_messages():
     """Remove old messages and inactive channels"""
@@ -168,11 +162,23 @@ def set_nickname():
         
         cleanup_messages()
         
-        # Check if nickname is already taken and generate unique one
+        # Check if nickname is already taken (case-insensitive)
         if not is_nickname_unique(nickname):
-            nickname = generate_unique_nickname(nickname)
+            return jsonify({"error": "Nickname already taken"}), 400
         
-        nicknames[user_id] = {"nickname": nickname, "time": time.time()}
+        # Create or update user
+        if user_id not in nicknames:
+            nicknames[user_id] = {
+                "nickname": nickname,
+                "created_at": time.time(),
+                "last_seen": time.time(),
+                "time": time.time()  # Keep compatibility with existing code
+            }
+        else:
+            nicknames[user_id]["nickname"] = nickname
+            nicknames[user_id]["last_seen"] = time.time()
+            nicknames[user_id]["time"] = time.time()  # Keep compatibility
+        
         save_data()
         
         return jsonify({"success": True, "nickname": nickname, "userId": user_id})
