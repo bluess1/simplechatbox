@@ -994,121 +994,131 @@
             document.getElementById('sidebar').classList.toggle('open');
         }
 
+
+        // ... existing code ...
+
+// Nickname functions
+async function setNickname() {
+    const nickname = document.getElementById('nicknameInput').value.trim();
+    
+    if (!nickname) {
+        showError('nicknameError', 'Please enter a nickname');
+        return;
+    }
+
+    try {
+        const response = await fetch('/set_nickname', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: currentUser.id,
+                nickname: nickname
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+            if (data.error === "Nickname already taken") {
+                showError('nicknameError', 'Nickname already taken. Please try a different one.');
+                // Clear the input to let them try again
+                document.getElementById('nicknameInput').value = '';
+                document.getElementById('charCounter').textContent = '0/25 characters';
+                document.getElementById('charCounter').className = 'char-counter';
+            } else {
+                showError('nicknameError', data.error);
+            }
+            return;
+        }
+
+        // Use the nickname from the response
+        currentUser.nickname = data.nickname;
+        
+        // Save user ID to localStorage so it persists
+        localStorage.setItem('chat-user-id', currentUser.id);
+        
+        document.getElementById('userInfo').textContent = `Welcome ${data.nickname}!`;
+        closeModal('nicknameModal');
+        
+        // Enable message input for main channel
+        if (currentChannel) {
+            document.getElementById('messageInput').disabled = false;
+            document.getElementById('sendBtn').disabled = false;
+        }
+
+    } catch (error) {
+        console.error('Error setting nickname:', error);
+        showError('nicknameError', 'Failed to set nickname. Please try again.');
+    }
+}
+
+// Function to change username
+async function changeUsername() {
+    const newUsername = document.getElementById('newUsernameInput').value.trim();
+    
+    if (!newUsername) {
+        showError('changeUsernameError', 'Please enter a new nickname');
+        return;
+    }
+
+    if (newUsername === currentUser.nickname) {
+        showError('changeUsernameError', 'That\'s already your current nickname');
+        return;
+    }
+
+    try {
+        const response = await fetch('/set_nickname', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: currentUser.id,
+                nickname: newUsername
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+            if (data.error === "Nickname already taken") {
+                showError('changeUsernameError', 'Nickname already taken. Please try a different one.');
+                // Clear the input to let them try again
+                document.getElementById('newUsernameInput').value = '';
+                document.getElementById('newUsernameCounter').textContent = '0/25 characters';
+                document.getElementById('newUsernameCounter').className = 'char-counter';
+            } else {
+                showError('changeUsernameError', data.error);
+            }
+            return;
+        }
+
+        // Update the user's nickname
+        currentUser.nickname = data.nickname;
+        
+        // Update the display
+        document.getElementById('userInfo').textContent = `Welcome ${data.nickname}!`;
+        
+        // Show success message
+        showSuccess('changeUsernameSuccess', 'Username changed successfully!');
+        
+        // Close modal after a short delay
+        setTimeout(() => {
+            closeModal('changeUsernameModal');
+        }, 1500);
+
+    } catch (error) {
+        console.error('Error changing username:', error);
+        showError('changeUsernameError', 'Failed to change username. Please try again.');
+    }
+}
+
+// ... existing code ...
+
         // Nickname functions
-        async function setNickname() {
-            const nickname = document.getElementById('nicknameInput').value.trim();
-            
-            if (!nickname) {
-                showError('nicknameError', 'Please enter a nickname');
-                return;
-            }
 
-            try {
-                const response = await fetch('/set_nickname', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        userId: currentUser.id,
-                        nickname: nickname
-                    })
-                });
-
-                const data = await response.json();
-
-                if (data.error) {
-                    showError('nicknameError', data.error);
-                    return;
-                }
-
-                // Use the nickname from the response (in case it was modified for uniqueness)
-                currentUser.nickname = data.nickname;
-                
-                // Save user ID to localStorage so it persists
-                localStorage.setItem('chat-user-id', currentUser.id);
-                
-                document.getElementById('userInfo').textContent = `Welcome ${data.nickname}!`;
-                closeModal('nicknameModal');
-                
-                // Enable message input for main channel
-                if (currentChannel) {
-                    document.getElementById('messageInput').disabled = false;
-                    document.getElementById('sendBtn').disabled = false;
-                }
-
-            } catch (error) {
-                console.error('Error setting nickname:', error);
-                showError('nicknameError', 'Failed to set nickname. Please try again.');
-            }
-        }
-
-        // Function to open change username modal
-        function openChangeUsernameModal() {
-            // Pre-fill current username
-            document.getElementById('newUsernameInput').value = currentUser.nickname || '';
-            
-            // Update character counter
-            const counter = document.getElementById('newUsernameCounter');
-            const length = currentUser.nickname ? currentUser.nickname.length : 0;
-            counter.textContent = `${length}/25 characters`;
-            counter.className = length > 20 ? 'char-counter warning' : 'char-counter';
-            
-            openModal('changeUsernameModal');
-        }
-
-        // Function to change username
-        async function changeUsername() {
-            const newUsername = document.getElementById('newUsernameInput').value.trim();
-            
-            if (!newUsername) {
-                showError('changeUsernameError', 'Please enter a new nickname');
-                return;
-            }
-
-            if (newUsername === currentUser.nickname) {
-                showError('changeUsernameError', 'That\'s already your current nickname');
-                return;
-            }
-
-            try {
-                const response = await fetch('/set_nickname', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        userId: currentUser.id,
-                        nickname: newUsername
-                    })
-                });
-
-                const data = await response.json();
-
-                if (data.error) {
-                    showError('changeUsernameError', data.error);
-                    return;
-                }
-
-                // Update the user's nickname
-                currentUser.nickname = data.nickname;
-                
-                // Update the display
-                document.getElementById('userInfo').textContent = `Welcome ${data.nickname}!`;
-                
-                // Show success message
-                showSuccess('changeUsernameSuccess', 'Username changed successfully!');
-                
-                // Close modal after a short delay
-                setTimeout(() => {
-                    closeModal('changeUsernameModal');
-                }, 1500);
-
-            } catch (error) {
-                console.error('Error changing username:', error);
-                showError('changeUsernameError', 'Failed to change username. Please try again.');
-            }
-        }
 
         // Channel functions
         async function loadChannels() {
@@ -1579,3 +1589,4 @@
     </script>
 </body>
 </html>
+
