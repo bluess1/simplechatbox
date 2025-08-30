@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify
 import time, os, re, random, string
 from datetime import datetime, timedelta
+import json
 
 app = Flask(__name__)
 
@@ -62,6 +63,23 @@ def contains_banned_content(text):
 def generate_channel_code():
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
 
+def generate_id():
+    return ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+
+def is_nickname_unique(nickname):
+    return nickname not in [user["nickname"] for user in nicknames.values()]
+
+def generate_unique_nickname(base_nickname):
+    if is_nickname_unique(base_nickname):
+        return base_nickname
+    
+    counter = 1
+    while True:
+        new_nickname = f"{base_nickname}{counter}"
+        if is_nickname_unique(new_nickname):
+            return new_nickname
+        counter += 1
+
 def cleanup_messages():
     """Remove old messages and inactive channels"""
     now = time.time()
@@ -85,6 +103,43 @@ def cleanup_messages():
     # Remove inactive channels
     for channel_id in channels_to_remove:
         del channels[channel_id]
+
+def save_data():
+    # Convert sets to lists for JSON serialization
+    data_to_save = {
+        "channels": {},
+        "nicknames": {}
+    }
+    
+    for channel_id, channel in channels.items():
+        channel_copy = channel.copy()
+        channel_copy["members"] = list(channel["members"])
+        data_to_save["channels"][channel_id] = channel_copy
+    
+    data_to_save["nicknames"] = nicknames
+    
+    try:
+        with open("chat_data.json", "w") as f:
+            json.dump(data_to_save, f, indent=2)
+    except Exception as e:
+        print(f"Error saving data: {e}")
+
+def load_data():
+    global channels, nicknames
+    try:
+        with open("chat_data.json", "r") as f:
+            data = json.load(f)
+            
+        # Convert lists back to sets
+        for channel_id, channel in data["channels"].items():
+            channel["members"] = set(channel["members"])
+            channels[channel_id] = channel
+            
+        nicknames = data["nicknames"]
+    except FileNotFoundError:
+        pass  # First time running, use defaults
+    except Exception as e:
+        print(f"Error loading data: {e}")
 
 @app.route("/")
 def index():
@@ -112,12 +167,26 @@ def set_nickname():
             return jsonify({"error": "Nickname contains inappropriate content"}), 400
         
         cleanup_messages()
+        
+        # Check if nickname is already taken and generate unique one
+        if not is_nickname_unique(nickname):
+            nickname = generate_unique_nickname(nickname)
+        
         nicknames[user_id] = {"nickname": nickname, "time": time.time()}
-        return jsonify({"success": True})
+        save_data()
+        
+        return jsonify({"success": True, "nickname": nickname, "userId": user_id})
         
     except Exception as e:
         print(f"Error in set_nickname: {str(e)}")
         return jsonify({"error": "Server error"}), 500
+
+@app.route("/get_user", methods=["GET"])
+def get_user():
+    user_id = request.args.get("userId")
+    if user_id in nicknames:
+        return jsonify({"success": True, "user": nicknames[user_id]})
+    return jsonify({"success": False, "user": None})
 
 @app.route("/channels")
 def get_channels():
@@ -188,6 +257,8 @@ def create_channel():
             "is_system": False  # Mark as user-created channel
         }
         
+        save_data()
+        
         return jsonify({
             "success": True,
             "channel": {
@@ -241,6 +312,7 @@ def join_channel():
         
         # Update last activity when someone joins
         channel["last_activity"] = time.time()
+        save_data()
         
         return jsonify({
             "success": True,
@@ -313,6 +385,7 @@ def send_message():
         }
         
         channels[channel_id]["messages"].append(message)
+        save_data()
         
         return jsonify({"success": True, "message": message})
         
@@ -349,6 +422,7 @@ def delete_channel():
         
         # Delete the channel
         del channels[channel_id]
+        save_data()
         
         return jsonify({"success": True})
         
@@ -390,6 +464,60 @@ def get_users():
         })
     return jsonify(user_list)
 
+@app.route("/admin/delete_user", methods=["POST"])
+def delete_user():
+    data = request.get_json()
+    user_id = data.get("userId")
+    
+    if user_id in nicknames:
+        del nicknames[user_id]
+        # Remove user from all channels
+        for channel in channels.values():
+            if "members" in channel and user_id in channel["members"]:
+                channel["members"].remove(user_id)
+        save_data()
+        return jsonify({"success": True})
+    
+    return jsonify({"error": "User not found"}), 404
+
+@app.route("/admin/delete_message", methods=["POST"])
+def delete_message():
+    data = request.get_json()
+    channel_id = data.get("channelId")
+    message_id = data.get("messageId")
+    
+    if channel_id not in channels:
+        return jsonify({"error": "Channel not found"}), 404
+    
+    channel = channels[channel_id]
+    message_found = False
+    
+    for i, message in enumerate(channel["messages"]):
+        if message["id"] == message_id:
+            del channel["messages"][i]
+            message_found = True
+            break
+    
+    if message_found:
+        save_data()
+        return jsonify({"success": True})
+    
+    return jsonify({"error": "Message not found"}), 404
+
+@app.route("/admin/delete_channel", methods=["POST"])
+def delete_channel_admin():
+    data = request.get_json()
+    channel_id = data.get("channelId")
+    
+    if channel_id not in channels:
+        return jsonify({"error": "Channel not found"}), 404
+    
+    # Admin can delete any channel
+    del channels[channel_id]
+    save_data()
+    
+    return jsonify({"success": True})
+
 @app.route("/admin/delete_channel", methods=["POST"])
 def admin_delete_channel():
     try:
@@ -416,6 +544,7 @@ def admin_delete_channel():
         
         # Delete the channel
         del channels[channel_id]
+        save_data()
         
         return jsonify({"success": True, "message": "Channel deleted successfully"})
         
@@ -446,6 +575,7 @@ def admin_clear_channel():
         
         # Clear all messages from the channel
         channels[channel_id]["messages"] = []
+        save_data()
         
         return jsonify({"success": True, "message": "Channel cleared successfully"})
         
@@ -483,6 +613,7 @@ def admin_delete_message():
         if len(channel["messages"]) == original_count:
             return jsonify({"error": "Message not found"}), 404
         
+        save_data()
         return jsonify({"success": True, "message": "Message deleted successfully"})
         
     except Exception as e:
@@ -514,6 +645,7 @@ def admin_ban_user():
             if "members" in channel and user_id in channel["members"]:
                 channel["members"].remove(user_id)
         
+        save_data()
         return jsonify({"success": True, "message": "User banned successfully"})
         
     except Exception as e:
@@ -521,18 +653,6 @@ def admin_ban_user():
         return jsonify({"error": "Server error"}), 500
 
 if __name__ == "__main__":
+    load_data()
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
-
-
-
-
-
-
-
-
-
-
-
-
-
