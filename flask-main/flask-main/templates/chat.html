@@ -207,8 +207,8 @@
         }
 
         .channel-badge.dm {
-    background: var(--accent-primary);
-}
+            background: var(--accent-primary);
+        }
 
         .delete-channel-btn {
             background: var(--danger-color);
@@ -728,6 +728,24 @@
         </div>
     </div>
 
+    <!-- Create Direct Message Modal -->
+    <div id="createDmModal" class="modal">
+        <div class="modal-content">
+            <h2>💬 Start Direct Message</h2>
+            <p>Enter the nickname of the person you want to message</p>
+            <div id="createDmError" class="error-message" style="display: none;"></div>
+            <div id="createDmSuccess" class="success-message" style="display: none;"></div>
+            
+            <div class="form-group">
+                <label class="form-label">Their Nickname</label>
+                <input type="text" id="targetNicknameInput" placeholder="Enter their nickname..." maxlength="25" />
+            </div>
+            
+            <button id="createDmBtn" onclick="createDirectMessage()">Start Chat</button>
+            <button class="secondary" onclick="closeModal('createDmModal')">Cancel</button>
+        </div>
+    </div>
+
     <!-- Change Username Modal -->
     <div id="changeUsernameModal" class="modal">
         <div class="modal-content">
@@ -773,36 +791,34 @@
                 <div class="search-container">
                     <input type="text" id="channelSearch" class="search-input" placeholder="🔍 Search channels..." />
                 </div>
-
-
-
-                <div class="channel-section">
-    <div class="section-title">Channels</div>
-    <div id="channelList">
-        <!-- Channels will be populated here -->
-    </div>
-</div>
-
-<div class="channel-section">
-    <div class="section-title">Direct Messages</div>
-    <div id="dmList">
-        <!-- DM channels will be populated here -->
-    </div>
-</div>
-
-<!-- ... existing code ... -->
                 
-              <div class="action-buttons">
-    <button class="action-btn" onclick="openModal('createChannelModal')">
-        ➕ Create Channel
-    </button>
-    <button class="action-btn secondary" onclick="openModal('joinChannelModal')">
-        🔐 Join Private Channel
-    </button>
-    <button class="action-btn" onclick="openModal('createDmModal')" style="background: var(--accent-primary);">
-        �� Direct Message
-    </button>
-</div>
+                <div class="channel-section">
+                    <div class="section-title">Channels</div>
+                    <div id="channelList">
+                        <!-- Channels will be populated here -->
+                    </div>
+                </div>
+                
+                <div class="channel-section">
+                    <div class="section-title">Direct Messages</div>
+                    <div id="dmList">
+                        <!-- DM channels will be populated here -->
+                    </div>
+                </div>
+                
+                <div class="action-buttons">
+                    <button class="action-btn" onclick="openModal('createChannelModal')">
+                        ➕ Create Channel
+                    </button>
+                    <button class="action-btn secondary" onclick="openModal('joinChannelModal')">
+                        🔐 Join Private Channel
+                    </button>
+                    <button class="action-btn" onclick="openModal('createDmModal')" style="background: var(--accent-primary);">
+                        💬 Direct Message
+                    </button>
+                </div>
+            </div>
+        </div>
 
         <!-- Main Chat Area -->
         <div class="chat-area">
@@ -831,35 +847,6 @@
             </div>
         </div>
     </div>
-
-
-            <!-- ... existing modals ... -->
-
-<!-- Create Direct Message Modal -->
-<div id="createDmModal" class="modal">
-    <div class="modal-content">
-        <h2>💬 Start Direct Message</h2>
-        <p>Enter the nickname of the person you want to message</p>
-        <div id="createDmError" class="error-message" style="display: none;"></div>
-        <div id="createDmSuccess" class="success-message" style="display: none;"></div>
-        
-        <div class="form-group">
-            <label class="form-label">Their Nickname</label>
-            <input type="text" id="targetNicknameInput" placeholder="Enter their nickname..." maxlength="25" />
-        </div>
-        
-        <button id="createDmBtn" onclick="createDirectMessage()">Start Chat</button>
-        <button class="secondary" onclick="closeModal('createDmModal')">Cancel</button>
-    </div>
-</div>
-
-<!-- ... existing code ... -->
-
-
-    
-
-
-    
 
     <script>
         let currentUser = {
@@ -1039,131 +1026,228 @@
             document.getElementById('sidebar').classList.toggle('open');
         }
 
-
-        // ... existing code ...
-
-// Nickname functions
-async function setNickname() {
-    const nickname = document.getElementById('nicknameInput').value.trim();
-    
-    if (!nickname) {
-        showError('nicknameError', 'Please enter a nickname');
-        return;
-    }
-
-    try {
-        const response = await fetch('/set_nickname', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: currentUser.id,
-                nickname: nickname
-            })
-        });
-
-        const data = await response.json();
-
-        if (data.error) {
-            if (data.error === "Nickname already taken") {
-                showError('nicknameError', 'Nickname already taken. Please try a different one.');
-                // Clear the input to let them try again
-                document.getElementById('nicknameInput').value = '';
-                document.getElementById('charCounter').textContent = '0/25 characters';
-                document.getElementById('charCounter').className = 'char-counter';
-            } else {
-                showError('nicknameError', data.error);
-            }
-            return;
-        }
-
-        // Use the nickname from the response
-        currentUser.nickname = data.nickname;
-        
-        // Save user ID to localStorage so it persists
-        localStorage.setItem('chat-user-id', currentUser.id);
-        
-        document.getElementById('userInfo').textContent = `Welcome ${data.nickname}!`;
-        closeModal('nicknameModal');
-        
-        // Enable message input for main channel
-        if (currentChannel) {
-            document.getElementById('messageInput').disabled = false;
-            document.getElementById('sendBtn').disabled = false;
-        }
-
-    } catch (error) {
-        console.error('Error setting nickname:', error);
-        showError('nicknameError', 'Failed to set nickname. Please try again.');
-    }
-}
-
-// Function to change username
-async function changeUsername() {
-    const newUsername = document.getElementById('newUsernameInput').value.trim();
-    
-    if (!newUsername) {
-        showError('changeUsernameError', 'Please enter a new nickname');
-        return;
-    }
-
-    if (newUsername === currentUser.nickname) {
-        showError('changeUsernameError', 'That\'s already your current nickname');
-        return;
-    }
-
-    try {
-        const response = await fetch('/set_nickname', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: currentUser.id,
-                nickname: newUsername
-            })
-        });
-
-        const data = await response.json();
-
-        if (data.error) {
-            if (data.error === "Nickname already taken") {
-                showError('changeUsernameError', 'Nickname already taken. Please try a different one.');
-                // Clear the input to let them try again
-                document.getElementById('newUsernameInput').value = '';
-                document.getElementById('newUsernameCounter').textContent = '0/25 characters';
-                document.getElementById('newUsernameCounter').className = 'char-counter';
-            } else {
-                showError('changeUsernameError', data.error);
-            }
-            return;
-        }
-
-        // Update the user's nickname
-        currentUser.nickname = data.nickname;
-        
-        // Update the display
-        document.getElementById('userInfo').textContent = `Welcome ${data.nickname}!`;
-        
-        // Show success message
-        showSuccess('changeUsernameSuccess', 'Username changed successfully!');
-        
-        // Close modal after a short delay
-        setTimeout(() => {
-            closeModal('changeUsernameModal');
-        }, 1500);
-
-    } catch (error) {
-        console.error('Error changing username:', error);
-        showError('changeUsernameError', 'Failed to change username. Please try again.');
-    }
-}
-
-// ... existing code ...
-
         // Nickname functions
+        async function setNickname() {
+            const nickname = document.getElementById('nicknameInput').value.trim();
+            
+            if (!nickname) {
+                showError('nicknameError', 'Please enter a nickname');
+                return;
+            }
 
+            try {
+                const response = await fetch('/set_nickname', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        userId: currentUser.id,
+                        nickname: nickname
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    if (data.error === "Nickname already taken") {
+                        showError('nicknameError', 'Nickname already taken. Please try a different one.');
+                        // Clear the input to let them try again
+                        document.getElementById('nicknameInput').value = '';
+                        document.getElementById('charCounter').textContent = '0/25 characters';
+                        document.getElementById('charCounter').className = 'char-counter';
+                    } else {
+                        showError('nicknameError', data.error);
+                    }
+                    return;
+                }
+
+                // Use the nickname from the response
+                currentUser.nickname = data.nickname;
+                
+                // Save user ID to localStorage so it persists
+                localStorage.setItem('chat-user-id', currentUser.id);
+                
+                document.getElementById('userInfo').textContent = `Welcome ${data.nickname}!`;
+                closeModal('nicknameModal');
+                
+                // Enable message input for main channel
+                if (currentChannel) {
+                    document.getElementById('messageInput').disabled = false;
+                    document.getElementById('sendBtn').disabled = false;
+                }
+
+            } catch (error) {
+                console.error('Error setting nickname:', error);
+                showError('nicknameError', 'Failed to set nickname. Please try again.');
+            }
+        }
+
+        // Function to open change username modal
+        function openChangeUsernameModal() {
+            // Pre-fill current username
+            document.getElementById('newUsernameInput').value = currentUser.nickname || '';
+            
+            // Update character counter
+            const counter = document.getElementById('newUsernameCounter');
+            const length = currentUser.nickname ? currentUser.nickname.length : 0;
+            counter.textContent = `${length}/25 characters`;
+            counter.className = length > 20 ? 'char-counter warning' : 'char-counter';
+            
+            openModal('changeUsernameModal');
+        }
+
+        // Function to change username
+        async function changeUsername() {
+            const newUsername = document.getElementById('newUsernameInput').value.trim();
+            
+            if (!newUsername) {
+                showError('changeUsernameError', 'Please enter a new nickname');
+                return;
+            }
+
+            if (newUsername === currentUser.nickname) {
+                showError('changeUsernameError', 'That\'s already your current nickname');
+                return;
+            }
+
+            try {
+                const response = await fetch('/set_nickname', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        userId: currentUser.id,
+                        nickname: newUsername
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    if (data.error === "Nickname already taken") {
+                        showError('changeUsernameError', 'Nickname already taken. Please try a different one.');
+                        // Clear the input to let them try again
+                        document.getElementById('newUsernameInput').value = '';
+                        document.getElementById('newUsernameCounter').textContent = '0/25 characters';
+                        document.getElementById('newUsernameCounter').className = 'char-counter';
+                    } else {
+                        showError('changeUsernameError', data.error);
+                    }
+                    return;
+                }
+
+                // Update the user's nickname
+                currentUser.nickname = data.nickname;
+                
+                // Update the display
+                document.getElementById('userInfo').textContent = `Welcome ${data.nickname}!`;
+                
+                // Show success message
+                showSuccess('changeUsernameSuccess', 'Username changed successfully!');
+                
+                // Close modal after a short delay
+                setTimeout(() => {
+                    closeModal('changeUsernameModal');
+                }, 1500);
+
+            } catch (error) {
+                console.error('Error changing username:', error);
+                showError('changeUsernameError', 'Failed to change username. Please try again.');
+            }
+        }
+
+        // Direct Message functions
+        async function createDirectMessage() {
+            const targetNickname = document.getElementById('targetNicknameInput').value.trim();
+            
+            if (!targetNickname) {
+                showError('createDmError', 'Please enter a nickname');
+                return;
+            }
+
+            if (!currentUser.nickname) {
+                showError('createDmError', 'Please set a nickname first');
+                return;
+            }
+
+            try {
+                const response = await fetch('/create_dm', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        userId: currentUser.id,
+                        targetNickname: targetNickname
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    showError('createDmError', data.error);
+                    return;
+                }
+
+                showSuccess('createDmSuccess', 'Direct message created!');
+                closeModal('createDmModal');
+                
+                // Clear form
+                document.getElementById('targetNicknameInput').value = '';
+                
+                // Reload channels and DMs
+                loadChannels();
+                loadDmChannels();
+
+            } catch (error) {
+                console.error('Error creating DM:', error);
+                showError('createDmError', 'Failed to create direct message. Please try again.');
+            }
+        }
+
+        async function loadDmChannels() {
+            try {
+                const response = await fetch(`/get_dm_channels?userId=${currentUser.id}`);
+                const data = await response.json();
+
+                if (data.error) {
+                    console.error('Error loading DM channels:', data.error);
+                    return;
+                }
+
+                const dmList = document.getElementById('dmList');
+                dmList.innerHTML = '';
+
+                if (data.dm_channels.length === 0) {
+                    dmList.innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 20px; font-size: 12px;">No direct messages yet</div>';
+                    return;
+                }
+
+                data.dm_channels.forEach(dm => {
+                    const dmItem = document.createElement('div');
+                    dmItem.className = `channel-item ${currentChannel === dm.id ? 'active' : ''}`;
+                    dmItem.onclick = () => joinChannel(dm.id);
+
+                    dmItem.innerHTML = `
+                        <div class="channel-info">
+                            <div class="channel-name">${dm.name}</div>
+                            <div class="channel-meta">${dm.message_count} messages</div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div class="channel-badge dm">💬</div>
+                            <button class="delete-channel-btn" onclick="deleteChannel('${dm.id}', event)">🗑️</button>
+                        </div>
+                    `;
+
+                    dmList.appendChild(dmItem);
+                });
+
+            } catch (error) {
+                console.error('Error loading DM channels:', error);
+            }
+        }
 
         // Channel functions
         async function loadChannels() {
@@ -1204,6 +1288,9 @@ async function changeUsername() {
                         joinChannel('main');
                     }
                 }
+
+                // Also load DM channels
+                loadDmChannels();
 
             } catch (error) {
                 console.error('Error loading channels:', error);
@@ -1250,8 +1337,7 @@ async function changeUsername() {
 
                 if (data.error) {
                     showError('createChannelError', data.error);
-                    return;
-                }
+                    return;}
 
                 showSuccess('createChannelSuccess', 'Channel created successfully!');
                 closeModal('createChannelModal');
@@ -1290,8 +1376,7 @@ async function changeUsername() {
 
                 if (data.error) {
                     showError('joinChannelError', data.error);
-                    return;
-                }
+                    return;                }
 
                 currentChannel = channelId;
                 document.getElementById('chatTitle').textContent = data.channel.name;
@@ -1630,154 +1715,7 @@ async function changeUsername() {
                 notification.remove();
             }, 3000);
         }
-
-
-
-        // ... existing code ...
-
-// Direct Message functions
-async function createDirectMessage() {
-    const targetNickname = document.getElementById('targetNicknameInput').value.trim();
-    
-    if (!targetNickname) {
-        showError('createDmError', 'Please enter a nickname');
-        return;
-    }
-
-    if (!currentUser.nickname) {
-        showError('createDmError', 'Please set a nickname first');
-        return;
-    }
-
-    try {
-        const response = await fetch('/create_dm', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userId: currentUser.id,
-                targetNickname: targetNickname
-            })
-        });
-
-        const data = await response.json();
-
-        if (data.error) {
-            showError('createDmError', data.error);
-            return;
-        }
-
-        showSuccess('createDmSuccess', 'Direct message created!');
-        closeModal('createDmModal');
-        
-        // Clear form
-        document.getElementById('targetNicknameInput').value = '';
-        
-        // Reload channels and DMs
-        loadChannels();
-        loadDmChannels();
-
-    } catch (error) {
-        console.error('Error creating DM:', error);
-        showError('createDmError', 'Failed to create direct message. Please try again.');
-    }
-}
-
-async function loadDmChannels() {
-    try {
-        const response = await fetch(`/get_dm_channels?userId=${currentUser.id}`);
-        const data = await response.json();
-
-        if (data.error) {
-            console.error('Error loading DM channels:', data.error);
-            return;
-        }
-
-        const dmList = document.getElementById('dmList');
-        dmList.innerHTML = '';
-
-        if (data.dm_channels.length === 0) {
-            dmList.innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 20px; font-size: 12px;">No direct messages yet</div>';
-            return;
-        }
-
-        data.dm_channels.forEach(dm => {
-            const dmItem = document.createElement('div');
-            dmItem.className = `channel-item ${currentChannel === dm.id ? 'active' : ''}`;
-            dmItem.onclick = () => joinChannel(dm.id);
-
-            dmItem.innerHTML = `
-                <div class="channel-info">
-                    <div class="channel-name">${dm.name}</div>
-                    <div class="channel-meta">${dm.message_count} messages</div>
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <div class="channel-badge dm">💬</div>
-                    <button class="delete-channel-btn" onclick="deleteChannel('${dm.id}', event)">🗑️</button>
-                </div>
-            `;
-
-            dmList.appendChild(dmItem);
-        });
-
-    } catch (error) {
-        console.error('Error loading DM channels:', error);
-    }
-}
-
-// Update the existing loadChannels function to also load DMs
-async function loadChannels() {
-    try {
-        const response = await fetch('/channels');
-        allChannels = await response.json();
-
-        const channelList = document.getElementById('channelList');
-        channelList.innerHTML = '';
-
-        allChannels.forEach(channel => {
-            const channelItem = document.createElement('div');
-            channelItem.className = `channel-item ${currentChannel === channel.id ? 'active' : ''}`;
-            channelItem.onclick = () => joinChannel(channel.id);
-
-            // Add delete button for non-system channels
-            const deleteButton = !channel.is_system ? 
-                `<button class="delete-channel-btn" onclick="deleteChannel('${channel.id}', event)">��️</button>` : '';
-
-            channelItem.innerHTML = `
-                <div class="channel-info">
-                    <div class="channel-name">${channel.name}</div>
-                    <div class="channel-meta">${channel.message_count} messages</div>
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <div class="channel-badge ${channel.type}">${channel.type === 'private' ? '🔒' : '🌍'}</div>
-                    ${deleteButton}
-                </div>
-            `;
-
-            channelList.appendChild(channelItem);
-        });
-
-        // Auto-select main channel if no channel is selected
-        if (!currentChannel && allChannels.length > 0) {
-            const mainChannel = allChannels.find(c => c.id === 'main');
-            if (mainChannel) {
-                joinChannel('main');
-            }
-        }
-
-        // Also load DM channels
-        loadDmChannels();
-
-    } catch (error) {
-        console.error('Error loading channels:', error);
-    }
-}
-
-// ... existing code ...
         
     </script>
 </body>
 </html>
-
-
