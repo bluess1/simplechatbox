@@ -15,7 +15,7 @@ channels = {
         "messages": [],
         "created_at": time.time(),
         "last_activity": time.time(),
-        "message_lifetime": 40000,  # 5 minutes default
+        "message_lifetime": 86400,  # 5 minutes default
         "creator": "system",
         "members": set(),  # Track who has joined
         "is_system": True  # Mark system channels
