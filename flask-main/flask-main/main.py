@@ -23,6 +23,13 @@ channels = {
 }
 nicknames = {}
 
+
+# --- NEW: Per-user notification settings ---
+# notification_settings[user_id][channel_id] = True/False (True=unmuted, False=muted)
+notification_settings = {}
+
+# ... [rest of your code unchanged, until after load/save functions]
+
 def normalize(text):
     if not text:
         return ""
@@ -158,6 +165,32 @@ def save_data():
             json.dump(data_to_save, f, indent=2)
     except Exception as e:
         print(f"Error saving data: {e}")
+
+
+
+# --- NEW: Notification settings API endpoints ---
+@app.route("/notification_settings", methods=["GET"])
+def get_notification_settings():
+    user_id = request.args.get("userId")
+    if not user_id:
+        return jsonify({"error": "User ID required"}), 400
+    user_settings = notification_settings.get(user_id, {})
+    return jsonify(user_settings)
+
+@app.route("/notification_settings", methods=["POST"])
+def set_notification_settings():
+    data = request.get_json()
+    user_id = data.get("userId")
+    channel_id = data.get("channelId")
+    enabled = data.get("enabled")
+    if not user_id or not channel_id or enabled is None:
+        return jsonify({"error": "Missing params"}), 400
+    if user_id not in notification_settings:
+        notification_settings[user_id] = {}
+    notification_settings[user_id][channel_id] = bool(enabled)
+    save_data()
+    return jsonify({"success": True})
+
 
 def load_data():
     global channels, nicknames
