@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Channel Notifications</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px #dbeafe;
+            padding: 32px;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .channel-list {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+        .channel-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .channel-name {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .mute-btn {
+            padding: 7px 18px;
+            border-radius: 6px;
+            border: none;
+            background: #3b82f6;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        .mute-btn.muted {
+            background: #cbd5e1;
+            color: #64748b;
+        }
+        .save-alert {
+            text-align: center;
+            margin: 15px 0 0 0;
+            color: #10b981;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Channel Notification Settings</h1>
+        <ul class="channel-list" id="channelList">
+            <!-- Channels will appear here -->
+        </ul>
+        <div id="saveAlert" class="save-alert">Saved!</div>
+    </div>
+    <script>
+        // Helper: get userId (same logic as main chat)
+        let userId = localStorage.getItem('chat-user-id') || Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('chat-user-id', userId);
+
+        // Channel list + notification settings
+        let channels = [];
+        let notificationSettings = {};
+
+        // Load channels and settings on page load
+        document.addEventListener('DOMContentLoaded', async function() {
+            await loadChannels();
+            await loadNotificationSettings();
+            renderChannelList();
+        });
+
+        async function loadChannels() {
+            const res = await fetch('/channels');
+            channels = await res.json();
+        }
+
+        async function loadNotificationSettings() {
+            const res = await fetch(`/notification_settings?userId=${userId}`);
+            notificationSettings = await res.json();
+        }
+
+        function renderChannelList() {
+            const list = document.getElementById('channelList');
+            list.innerHTML = '';
+            if (!channels.length) {
+                list.innerHTML = '<li>No channels found.</li>';
+                return;
+            }
+            channels.forEach(channel => {
+                let enabled = notificationSettings[channel.id] === true;
+                let btn = `<button class="mute-btn${enabled ? '' : ' muted'}" onclick="toggleNotify('${channel.id}', this)">
+                    ${enabled ? '🔔 Unmute' : '🔕 Muted'}
+                </button>`;
+                let li = document.createElement('li');
+                li.className = 'channel-item';
+                li.innerHTML = `<span class="channel-name">${channel.name}</span>${btn}`;
+                list.appendChild(li);
+            });
+        }
+
+        // Toggle notification and save to server
+        async function toggleNotify(channelId, btn) {
+            let enabled = notificationSettings[channelId] === true;
+            let newEnabled = !enabled; // Toggle
+            let resp = await fetch('/notification_settings', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    userId: userId,
+                    channelId: channelId,
+                    enabled: newEnabled
+                })
+            });
+            let data = await resp.json();
+            if (data.success) {
+                notificationSettings[channelId] = newEnabled;
+                btn.classList.toggle('muted', !newEnabled);
+                btn.textContent = newEnabled ? '🔔 Unmute' : '🔕 Muted';
+                // Show saved alert
+                document.getElementById('saveAlert').style.display = 'block';
+                setTimeout(() => document.getElementById('saveAlert').style.display = 'none', 1200);
+            }
+        }
+
+        window.toggleNotify = toggleNotify;
+    </script>
+</body>
+</html>
