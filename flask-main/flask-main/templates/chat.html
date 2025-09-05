@@ -387,23 +387,73 @@
             background: var(--bg-secondary);
             border-top: 1px solid var(--border-color);
             gap: 12px;
+            align-items: flex-end;
+        }
+
+        .input-container {
+            display: flex;
+            flex: 1;
+            position: relative;
+            background: var(--bg-primary);
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .input-container:focus-within {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
 
         .chat-input input {
             flex: 1;
             padding: 14px 18px;
-            border: 2px solid var(--border-color);
-            border-radius: 12px;
+            border: none;
             outline: none;
             font-size: 14px;
-            background: var(--bg-primary);
+            background: transparent;
             color: var(--text-primary);
-            transition: all 0.3s ease;
+            border-radius: 12px;
         }
 
-        .chat-input input:focus {
-            border-color: var(--accent-primary);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        .file-upload-container {
+            display: flex;
+            align-items: center;
+            padding-right: 8px;
+        }
+
+        .file-upload-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            background: var(--accent-primary);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+        }
+
+        .file-upload-btn:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+        }
+
+        .file-upload-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+        }
+
+        .file-upload-btn svg {
+            transition: transform 0.2s ease;
+        }
+
+        .file-upload-btn:hover svg {
+            transform: rotate(90deg);
         }
 
         .chat-input button {
@@ -428,6 +478,194 @@
             background: var(--text-secondary);
             cursor: not-allowed;
             transform: none;
+        }
+
+        /* File Preview Styles */
+        .file-preview-container {
+            padding: 0 20px 10px 20px;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .file-preview {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-primary);
+            border: 2px solid var(--accent-primary);
+            border-radius: 12px;
+            padding: 12px 16px;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .file-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            background: var(--accent-primary);
+            color: white;
+        }
+
+        .file-details {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .file-name {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .file-size {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .remove-file-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            background: var(--danger-color);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .remove-file-btn:hover {
+            background: #dc2626;
+            transform: scale(1.1);
+        }
+
+        /* Drag and Drop Styles */
+        .input-container.drag-over {
+            border-color: var(--accent-primary);
+            background: rgba(59, 130, 246, 0.05);
+            transform: scale(1.02);
+        }
+
+        .drag-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(59, 130, 246, 0.1);
+            border: 2px dashed var(--accent-primary);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent-primary);
+            font-weight: 600;
+            font-size: 16px;
+            z-index: 10;
+        }
+
+        /* File Message Styles */
+        .file-message {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            padding: 12px;
+            margin: 8px 0;
+        }
+
+        .file-icon-large {
+            font-size: 24px;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--accent-primary);
+            border-radius: 8px;
+            color: white;
+        }
+
+        .file-details-large {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .file-name-large {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 14px;
+            word-break: break-word;
+        }
+
+        .file-size-large {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .download-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            background: var(--accent-primary);
+            border-radius: 6px;
+            color: white;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .download-btn:hover {
+            background: var(--accent-hover);
+            transform: scale(1.1);
+        }
+
+        .message-image {
+            max-width: 300px;
+            max-height: 300px;
+            border-radius: 8px;
+            margin-top: 8px;
+            box-shadow: var(--shadow);
+        }
+
+        .message-video {
+            max-width: 400px;
+            max-height: 300px;
+            border-radius: 8px;
+            margin-top: 8px;
+            box-shadow: var(--shadow);
+        }
+
+        .message-audio {
+            width: 100%;
+            max-width: 300px;
+            margin-top: 8px;
+        }
+
+        .file-link {
+            color: var(--accent-primary);
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .file-link:hover {
+            text-decoration: underline;
         }
 
         /* Modal Styles */
@@ -842,12 +1080,38 @@
             </div>
 
 
-           <div class="chat-input">
-    <input type="text" id="messageInput" placeholder="Type a message..." maxlength="500" />
+           <!-- File Preview Area -->
+           <div class="file-preview-container" id="filePreviewContainer" style="display: none;">
+               <div class="file-preview">
+                   <div class="file-info">
+                       <div class="file-icon" id="fileIcon"></div>
+                       <div class="file-details">
+                           <div class="file-name" id="fileName"></div>
+                           <div class="file-size" id="fileSize"></div>
+                       </div>
+                   </div>
+                   <button class="remove-file-btn" onclick="removeFilePreview()" title="Remove file">
+                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                           <path d="M18 6L6 18M6 6l12 12"/>
+                       </svg>
+                   </button>
+               </div>
+           </div>
 
-    <!-- 📎 File Upload -->
-    <input type="file" id="fileInput" style="display: none;" onchange="uploadFile(event)" />
-    <button onclick="document.getElementById('fileInput').click()">📎</button>
+           <div class="chat-input" id="chatInput">
+    <div class="input-container" id="inputContainer">
+        <input type="text" id="messageInput" placeholder="Type a message..." maxlength="500" />
+        
+        <!-- File Upload Button -->
+        <div class="file-upload-container">
+            <input type="file" id="fileInput" style="display: none;" onchange="handleFileSelect(event)" accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.txt,.doc,.docx,.mp4,.mp3,.wav,.zip,.rar" />
+            <button class="file-upload-btn" onclick="document.getElementById('fileInput').click()" title="Attach file">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 5v14M5 12h14"/>
+                </svg>
+            </button>
+        </div>
+    </div>
 
     <button id="sendBtn" onclick="sendMessage()">Send</button>
 </div>
@@ -885,6 +1149,9 @@
             document.getElementById('channelSearch').addEventListener('input', function(e) {
                 filterChannels(e.target.value);
             });
+
+            // Initialize drag and drop
+            setupDragAndDrop();
 
             // Character counters
             document.getElementById('nicknameInput').addEventListener('input', function(e) {
@@ -1543,14 +1810,7 @@
                         messageWrapper.innerHTML = `
     <div class="nickname">${message.nickname}</div>
     <div class="bubble ${message.userId === currentUser.id ? 'self' : 'other'}">
-        ${message.file 
-            ? `<a href="${message.file}" target="_blank">
-                   ${message.text}
-                   ${message.file.match(/\.(jpg|jpeg|png|gif)$/i) 
-                        ? `<br><img src="${message.file}" style="max-width: 200px; border-radius: 8px; margin-top: 5px;">` 
-                        : ''}
-               </a>` 
-            : message.text}
+        ${renderMessageContent(message)}
         <div class="timestamp">${formatTime(message.timestamp)}</div>
     </div>
 `;
@@ -1585,6 +1845,12 @@
         async function sendMessage() {
             const messageInput = document.getElementById('messageInput');
             const text = messageInput.value.trim();
+            
+            // If there's a selected file, upload it instead of sending text
+            if (selectedFile) {
+                await uploadFile();
+                return;
+            }
             
             if (!text) {
                 return;
@@ -1632,49 +1898,213 @@
         }
 
 
-        async function uploadFile(event) {
-    const file = event.target.files[0];
-    if (!file) return;
+        let selectedFile = null;
 
-    if (!currentChannel) {
-        showError('nicknameError', 'Please select a channel first');
-        return;
-    }
-
-    if (!currentUser.nickname) {
-        showError('nicknameError', 'Please set a nickname first');
-        return;
-    }
-
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('userId', currentUser.id);
-    formData.append('nickname', currentUser.nickname);
-    formData.append('channelId', currentChannel);
-
-    try {
-        const response = await fetch('/upload', {
-            method: 'POST',
-            body: formData
-        });
-        const data = await response.json();
-
-        if (data.error) {
-            showError('nicknameError', data.error);
-            return;
+        function renderMessageContent(message) {
+            // Handle file messages
+            if (message.type && message.type !== 'text') {
+                const fileIcon = getFileTypeIcon(message.type);
+                const fileName = message.file_name || 'Unknown file';
+                const fileSize = message.file_size ? formatFileSize(message.file_size) : '';
+                
+                return `
+                    <div class="file-message">
+                        <div class="file-icon-large">${fileIcon}</div>
+                        <div class="file-details-large">
+                            <div class="file-name-large">${fileName}</div>
+                            ${fileSize ? `<div class="file-size-large">${fileSize}</div>` : ''}
+                        </div>
+                        <a href="${message.file_url}" target="_blank" class="download-btn" title="Download file">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="7,10 12,15 17,10"/>
+                                <line x1="12" y1="15" x2="12" y2="3"/>
+                            </svg>
+                        </a>
+                    </div>
+                    ${message.type === 'image' ? `<img src="${message.file_url}" class="message-image" alt="${fileName}">` : ''}
+                    ${message.type === 'video' ? `<video controls class="message-video"><source src="${message.file_url}" type="video/mp4"></video>` : ''}
+                    ${message.type === 'audio' ? `<audio controls class="message-audio"><source src="${message.file_url}"></audio>` : ''}
+                `;
+            }
+            
+            // Handle legacy file messages (old format)
+            if (message.file) {
+                const isImage = message.file.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+                return `
+                    <a href="${message.file}" target="_blank" class="file-link">
+                        ${message.text || '📎 File'}
+                        ${isImage ? `<br><img src="${message.file}" class="message-image" alt="Uploaded image">` : ''}
+                    </a>
+                `;
+            }
+            
+            // Regular text message
+            return message.text || '';
         }
 
-        // Reload messages to display uploaded file
-        loadMessages(currentChannel);
+        function getFileTypeIcon(type) {
+            const icons = {
+                'image': '🖼️',
+                'video': '🎥',
+                'audio': '🎵',
+                'document': '📄',
+                'archive': '📦',
+                'file': '📎'
+            };
+            return icons[type] || '📎';
+        }
 
-    } catch (error) {
-        console.error('Error uploading file:', error);
-        showError('nicknameError', 'Failed to upload file');
-    }
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                showFilePreview(file);
+            }
+        }
 
-    // Reset so user can reselect same file
-    event.target.value = '';
-}
+        function showFilePreview(file) {
+            selectedFile = file;
+            
+            // Get file icon based on type
+            const fileIcon = getFileIcon(file);
+            const fileSize = formatFileSize(file.size);
+            
+            document.getElementById('fileIcon').innerHTML = fileIcon;
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('fileSize').textContent = fileSize;
+            document.getElementById('filePreviewContainer').style.display = 'block';
+            
+            // Scroll to bottom to show preview
+            const chatMessages = document.getElementById('chatMessages');
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function removeFilePreview() {
+            selectedFile = null;
+            document.getElementById('filePreviewContainer').style.display = 'none';
+            document.getElementById('fileInput').value = '';
+        }
+
+        function getFileIcon(file) {
+            const extension = file.name.split('.').pop().toLowerCase();
+            
+            if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(extension)) {
+                return '🖼️';
+            } else if (['mp4', 'avi', 'mov', 'wmv'].includes(extension)) {
+                return '🎥';
+            } else if (['mp3', 'wav', 'flac', 'aac'].includes(extension)) {
+                return '🎵';
+            } else if (['pdf'].includes(extension)) {
+                return '📄';
+            } else if (['doc', 'docx'].includes(extension)) {
+                return '📝';
+            } else if (['txt'].includes(extension)) {
+                return '📃';
+            } else if (['zip', 'rar', '7z'].includes(extension)) {
+                return '📦';
+            } else {
+                return '📎';
+            }
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        async function uploadFile() {
+            if (!selectedFile) return;
+
+            if (!currentChannel) {
+                showError('nicknameError', 'Please select a channel first');
+                return;
+            }
+
+            if (!currentUser.nickname) {
+                showError('nicknameError', 'Please set a nickname first');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('userId', currentUser.id);
+            formData.append('nickname', currentUser.nickname);
+            formData.append('channelId', currentChannel);
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (data.error) {
+                    showError('nicknameError', data.error);
+                    return;
+                }
+
+                // Clear preview and reload messages
+                removeFilePreview();
+                loadMessages(currentChannel);
+
+            } catch (error) {
+                console.error('Error uploading file:', error);
+                showError('nicknameError', 'Failed to upload file');
+            }
+        }
+
+        // Drag and drop functionality
+        function setupDragAndDrop() {
+            const inputContainer = document.getElementById('inputContainer');
+            
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                inputContainer.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                inputContainer.addEventListener(eventName, highlight, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                inputContainer.addEventListener(eventName, unhighlight, false);
+            });
+
+            function highlight(e) {
+                inputContainer.classList.add('drag-over');
+            }
+
+            function unhighlight(e) {
+                inputContainer.classList.remove('drag-over');
+            }
+
+            inputContainer.addEventListener('drop', handleDrop, false);
+
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+
+                if (files.length > 0) {
+                    const file = files[0];
+                    // Check if file type is allowed
+                    const extension = file.name.split('.').pop().toLowerCase();
+                    const allowedExtensions = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'pdf', 'txt', 'doc', 'docx', 'mp4', 'mp3', 'wav', 'zip', 'rar'];
+                    
+                    if (allowedExtensions.includes(extension)) {
+                        showFilePreview(file);
+                    } else {
+                        showError('nicknameError', 'File type not supported. Please select a supported file type.');
+                    }
+                }
+            }
+        }
 
 
         async function deleteChannel(channelId, event) {
