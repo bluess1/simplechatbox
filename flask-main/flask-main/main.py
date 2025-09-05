@@ -1,9 +1,22 @@
-from flask import Flask, render_template, request, jsonify
-import time, os, re, random, string
+from flask import Flask, render_template, request, jsonify, send_from_directory
+import time, os, re, random, string, base64
 from datetime import datetime, timedelta
 import json
+from werkzeug.utils import secure_filename
+import mimetypes
 
 app = Flask(__name__)
+
+# Configure upload settings
+UPLOAD_FOLDER = 'uploads'
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+
+# Create uploads directory if it doesn't exist
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
 
 # Data structures
 channels = {
@@ -15,20 +28,14 @@ channels = {
         "messages": [],
         "created_at": time.time(),
         "last_activity": time.time(),
-        "message_lifetime": 86400,  # 5 minutes default
+        "message_lifetime": 86400,  # 24 hours default
         "creator": "system",
-        "members": set(),  # Track who has joined
-        "is_system": True  # Mark system channels
+        "members": set(),
+        "is_system": True
     }
 }
 nicknames = {}
-
-
-# --- NEW: Per-user notification settings ---
-# notification_settings[user_id][channel_id] = True/False (True=unmuted, False=muted)
 notification_settings = {}
-
-# ... [rest of your code unchanged, until after load/save functions]
 
 def normalize(text):
     if not text:
@@ -45,13 +52,11 @@ def normalize(text):
     return text
 
 banned_words = [
-   "bomb", "shooter", "kill", "nigger", "fck", "violence", "gun", "knife", "weapon", "niggar", "nigglet",
+    "bomb", "shooter", "kill", "nigger", "fck", "violence", "gun", "knife", "weapon", "niggar", "nigglet",
     "345fdgfdg", "nazi", "hitler", "345fdgfdg", "sexist", "nga", "n g a", "345fdgfdg", "345fdgfdg", "nigge",
     "porn", "sex", "nude", "naked", "horny", "sexy", "dick", "penis", "vagina", "boobs", "345fdgfdg",
     "345fdgfdg", "heroin", "345fdgfdg", "345fdgfdg", "345fdgfdg", "marijuana", "crack", "ecstasy", "lsd",
-    "345fdgfdg", "345fdgfdg", "345fdgfdg", "345fdgfdg", "345fdgfdg", "345fdgfdg", "345fdgfdg", "345fdgfdg",
-    "345fdgfdg", "345fdgfdg", "345fdgfdg", "345fdgfdg", "345fdgfdg", "345fdgfdg", "345fdgfdg", "345fdgfdg", "345fdgfdg",
-    "fuck", "shit", "345fdgfdg", "345fdgfdg", "bitch", "345fdgfdg", "345fdgfdg", "345fdgfdg", "whore", "slut"
+    "fuck", "shit", "bitch", "whore", "slut"
 ]
 
 def contains_banned_content(text):
@@ -67,6 +72,10 @@ def contains_banned_content(text):
             return True
     return False
 
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 def generate_channel_code():
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
 
@@ -74,7 +83,6 @@ def generate_id():
     return ''.join(random.choices(string.ascii_letters + string.digits, k=8))
 
 def is_nickname_unique(nickname):
-    # Convert to lowercase for case-insensitive comparison
     nickname_lower = nickname.lower()
     for user_data in nicknames.values():
         if user_data["nickname"].lower() == nickname_lower:
@@ -82,37 +90,33 @@ def is_nickname_unique(nickname):
     return True
 
 def create_dm_channel(user1_id, user2_id):
-    """Create a direct message channel between two users"""
-    # Sort user IDs to ensure consistent channel naming
     sorted_users = sorted([user1_id, user2_id])
     channel_id = f"dm_{sorted_users[0]}_{sorted_users[1]}"
     
-    # Get nicknames for display
     user1_nickname = nicknames.get(user1_id, {}).get("nickname", "Unknown")
     user2_nickname = nicknames.get(user2_id, {}).get("nickname", "Unknown")
     
     if channel_id not in channels:
         channels[channel_id] = {
             "id": channel_id,
-            "name": f"�� {user1_nickname} & {user2_nickname}",
-            "type": "dm",  # New type for direct messages
+            "name": f"💬 {user1_nickname} & {user2_nickname}",
+            "type": "dm",
             "code": None,
             "messages": [],
             "created_at": time.time(),
             "last_activity": time.time(),
-            "message_lifetime": 86400,  # 24 hours for DMs
+            "message_lifetime": 86400,
             "creator": user1_id,
             "members": {user1_id, user2_id},
             "is_system": False,
-            "is_dm": True,  # Mark as direct message
-            "dm_users": {user1_id, user2_id}  # Store the two users
+            "is_dm": True,
+            "dm_users": {user1_id, user2_id}
         }
         save_data()
     
     return channel_id
 
 def get_user_by_nickname(nickname):
-    """Find user ID by nickname (case-insensitive)"""
     nickname_lower = nickname.lower()
     for user_id, user_data in nicknames.items():
         if user_data["nickname"].lower() == nickname_lower:
@@ -120,7 +124,6 @@ def get_user_by_nickname(nickname):
     return None
 
 def cleanup_messages():
-    """Remove old messages and inactive channels"""
     now = time.time()
     global channels, nicknames
     
@@ -130,11 +133,22 @@ def cleanup_messages():
     # Clean up messages in each channel
     channels_to_remove = []
     for channel_id, channel in channels.items():
-        # Remove old messages based on channel's message lifetime
+        # Remove old messages and their associated files
+        old_messages = [m for m in channel["messages"] if now - m["time"] >= channel["message_lifetime"]]
+        
+        # Delete associated media files
+        for message in old_messages:
+            if message.get("type") == "image" and message.get("file_path"):
+                try:
+                    file_path = os.path.join(app.config['UPLOAD_FOLDER'], message["file_path"])
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+                except Exception as e:
+                    print(f"Error deleting file {message.get('file_path')}: {e}")
+        
         channel["messages"] = [m for m in channel["messages"] if now - m["time"] < channel["message_lifetime"]]
         
-        # Remove inactive user-created channels after 12 hours (43200 seconds)
-        # But don't remove DM channels
+        # Remove inactive user-created channels after 12 hours
         if not channel.get("is_system", False) and not channel.get("is_dm", False):
             if now - channel["last_activity"] > 43200:  # 12 hours
                 channels_to_remove.append(channel_id)
@@ -145,7 +159,6 @@ def cleanup_messages():
         del channels[channel_id]
 
 def save_data():
-    # Convert sets to lists for JSON serialization
     data_to_save = {
         "channels": {},
         "nicknames": {}
@@ -166,9 +179,25 @@ def save_data():
     except Exception as e:
         print(f"Error saving data: {e}")
 
+def load_data():
+    global channels, nicknames
+    try:
+        with open("chat_data.json", "r") as f:
+            data = json.load(f)
+            
+        for channel_id, channel in data["channels"].items():
+            channel["members"] = set(channel["members"])
+            if "dm_users" in channel:
+                channel["dm_users"] = set(channel["dm_users"])
+            channels[channel_id] = channel
+            
+        nicknames = data["nicknames"]
+    except FileNotFoundError:
+        pass
+    except Exception as e:
+        print(f"Error loading data: {e}")
 
-
-# --- NEW: Notification settings API endpoints ---
+# --- NOTIFICATION SETTINGS API ENDPOINTS ---
 @app.route("/notification_settings", methods=["GET"])
 def get_notification_settings():
     user_id = request.args.get("userId")
@@ -191,26 +220,12 @@ def set_notification_settings():
     save_data()
     return jsonify({"success": True})
 
+# --- FILE SERVING ---
+@app.route('/uploads/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
-def load_data():
-    global channels, nicknames
-    try:
-        with open("chat_data.json", "r") as f:
-            data = json.load(f)
-            
-        # Convert lists back to sets
-        for channel_id, channel in data["channels"].items():
-            channel["members"] = set(channel["members"])
-            if "dm_users" in channel:
-                channel["dm_users"] = set(channel["dm_users"])
-            channels[channel_id] = channel
-            
-        nicknames = data["nicknames"]
-    except FileNotFoundError:
-        pass  # First time running, use defaults
-    except Exception as e:
-        print(f"Error loading data: {e}")
-
+# --- MAIN ROUTES ---
 @app.route("/")
 def index():
     return render_template("chat.html")
@@ -238,22 +253,20 @@ def set_nickname():
         
         cleanup_messages()
         
-        # Check if nickname is already taken (case-insensitive)
         if not is_nickname_unique(nickname):
             return jsonify({"error": "Nickname already taken"}), 400
         
-        # Create or update user
         if user_id not in nicknames:
             nicknames[user_id] = {
                 "nickname": nickname,
                 "created_at": time.time(),
                 "last_seen": time.time(),
-                "time": time.time()  # Keep compatibility with existing code
+                "time": time.time()
             }
         else:
             nicknames[user_id]["nickname"] = nickname
             nicknames[user_id]["last_seen"] = time.time()
-            nicknames[user_id]["time"] = time.time()  # Keep compatibility
+            nicknames[user_id]["time"] = time.time()
         
         save_data()
         
@@ -270,14 +283,85 @@ def get_user():
         return jsonify({"success": True, "user": nicknames[user_id]})
     return jsonify({"success": False, "user": None})
 
+# --- IMAGE UPLOAD ENDPOINT ---
+@app.route("/upload_image", methods=["POST"])
+def upload_image():
+    try:
+        if 'file' not in request.files:
+            return jsonify({"error": "No file provided"}), 400
+        
+        file = request.files['file']
+        user_id = request.form.get('userId', '').strip()
+        nickname = request.form.get('nickname', '').strip()
+        channel_id = request.form.get('channelId', 'main').strip()
+        
+        if file.filename == '':
+            return jsonify({"error": "No file selected"}), 400
+        
+        if not user_id or not nickname:
+            return jsonify({"error": "User ID and nickname are required"}), 400
+            
+        if not allowed_file(file.filename):
+            return jsonify({"error": "File type not allowed. Only PNG, JPG, JPEG, GIF, and WEBP files are supported."}), 400
+        
+        cleanup_messages()
+        
+        if channel_id not in channels:
+            return jsonify({"error": "Channel not found"}), 404
+        
+        channel = channels[channel_id]
+        
+        # Check permissions same as text messages
+        if channel.get("is_dm", False):
+            if user_id not in channel["dm_users"]:
+                return jsonify({"error": "You are not part of this direct message"}), 403
+        elif channel["type"] == "private" and user_id not in channel["members"]:
+            return jsonify({"error": "You are not a member of this private channel"}), 403
+        
+        # Generate unique filename
+        timestamp = str(int(time.time()))
+        filename = secure_filename(f"{user_id}_{timestamp}_{file.filename}")
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        
+        # Save file
+        file.save(file_path)
+        
+        # Determine if it's a GIF
+        is_gif = filename.lower().endswith('.gif')
+        
+        # Update nickname and channel activity
+        nicknames[user_id] = {"nickname": nickname, "time": time.time()}
+        channel["last_activity"] = time.time()
+        
+        # Add message to channel
+        message = {
+            "text": "",  # No text for image messages
+            "nickname": nickname,
+            "userId": user_id,
+            "time": time.time(),
+            "type": "image",
+            "file_path": filename,
+            "file_url": f"/uploads/{filename}",
+            "is_gif": is_gif
+        }
+        
+        channel["messages"].append(message)
+        save_data()
+        
+        return jsonify({"success": True, "message": message})
+        
+    except Exception as e:
+        print(f"Error in upload_image: {str(e)}")
+        return jsonify({"error": "Server error"}), 500
+
+# --- EXISTING ENDPOINTS (Updated to handle media messages) ---
 @app.route("/channels")
 def get_channels():
     cleanup_messages()
     channel_list = []
     
-    # Get regular channels (not DMs)
     for channel_id, channel in channels.items():
-        if not channel.get("is_dm", False):  # Only non-DM channels
+        if not channel.get("is_dm", False):
             channel_list.append({
                 "id": channel_id,
                 "name": channel["name"],
@@ -292,7 +376,6 @@ def get_channels():
 
 @app.route("/get_dm_channels", methods=["GET"])
 def get_dm_channels():
-    """Get DM channels for a specific user"""
     user_id = request.args.get("userId")
     if not user_id:
         return jsonify({"error": "User ID required"}), 400
@@ -302,7 +385,6 @@ def get_dm_channels():
     dm_channels = []
     for channel_id, channel in channels.items():
         if channel.get("is_dm", False) and user_id in channel["dm_users"]:
-            # Get the other user's nickname for display
             other_user_id = next(uid for uid in channel["dm_users"] if uid != user_id)
             other_nickname = nicknames.get(other_user_id, {}).get("nickname", "Unknown")
             
@@ -333,16 +415,13 @@ def create_dm():
         
         cleanup_messages()
         
-        # Find target user by nickname
         target_user_id = get_user_by_nickname(target_nickname)
         if not target_user_id:
             return jsonify({"error": "User not found"}), 404
         
-        # Can't create DM with yourself
         if target_user_id == user_id:
             return jsonify({"error": "You cannot create a DM with yourself"}), 400
         
-        # Create or get existing DM channel
         channel_id = create_dm_channel(user_id, target_user_id)
         
         return jsonify({
@@ -380,7 +459,6 @@ def create_channel():
         if message_lifetime < 60 or message_lifetime > 86400:
             return jsonify({"error": "Message lifetime must be between 1 minute and 24 hours"}), 400
         
-        # Add validation for custom codes
         if channel_type == "private":
             if not custom_code or len(custom_code) != 6:
                 return jsonify({"error": "Private channels require a 6-character code"}), 400
@@ -391,7 +469,6 @@ def create_channel():
         
         channel_id = name.lower().replace(" ", "-") + "-" + ''.join(random.choices(string.ascii_lowercase + string.digits, k=4))
         
-        # Use custom code if provided, otherwise generate random
         if channel_type == "private":
             code = custom_code.upper() if custom_code else generate_channel_code()
         else:
@@ -407,8 +484,8 @@ def create_channel():
             "last_activity": time.time(),
             "message_lifetime": message_lifetime,
             "creator": user_id,
-            "members": {user_id},  # Creator automatically becomes a member
-            "is_system": False  # Mark as user-created channel
+            "members": {user_id},
+            "is_system": False
         }
         
         save_data()
@@ -448,28 +525,19 @@ def join_channel():
         
         channel = channels[channel_id]
         
-        # For DM channels, check if user is one of the DM participants
         if channel.get("is_dm", False):
             if user_id not in channel["dm_users"]:
                 return jsonify({"error": "You are not part of this direct message"}), 403
-        
-        # Check if private channel requires code
         elif channel["type"] == "private":
-            # Check if user is already a member
             if user_id in channel["members"]:
-                # User is already a member, no need for code
                 pass
             else:
-                # New user needs to provide code
                 if not code:
                     return jsonify({"error": "Private channel requires a code to join"}), 403
                 if channel["code"] != code.upper():
                     return jsonify({"error": "Invalid channel code"}), 403
-                
-                # Add user to members when they successfully join with code
                 channel["members"].add(user_id)
         
-        # Update last activity when someone joins
         channel["last_activity"] = time.time()
         save_data()
         
@@ -495,12 +563,25 @@ def get_messages(channel_id):
         return jsonify({"error": "Channel not found"}), 404
     
     channel = channels[channel_id]
-    return jsonify([{
-        "text": m["text"], 
-        "nickname": m["nickname"], 
-        "userId": m["userId"],
-        "timestamp": m["time"]
-    } for m in channel["messages"]])
+    messages = []
+    
+    for m in channel["messages"]:
+        message = {
+            "text": m["text"], 
+            "nickname": m["nickname"], 
+            "userId": m["userId"],
+            "timestamp": m["time"],
+            "type": m.get("type", "text")
+        }
+        
+        # Add media-specific fields
+        if message["type"] == "image":
+            message["file_url"] = m.get("file_url", "")
+            message["is_gif"] = m.get("is_gif", False)
+        
+        messages.append(message)
+    
+    return jsonify(messages)
 
 @app.route("/send", methods=["POST"])
 def send_message():
@@ -528,25 +609,21 @@ def send_message():
         
         channel = channels[channel_id]
         
-        # For DM channels, check if user is one of the DM participants
         if channel.get("is_dm", False):
             if user_id not in channel["dm_users"]:
                 return jsonify({"error": "You are not part of this direct message"}), 403
-        
-        # For private channels, check if user is a member
         elif channel["type"] == "private" and user_id not in channel["members"]:
             return jsonify({"error": "You are not a member of this private channel"}), 403
         
-        # Update nickname and channel activity
         nicknames[user_id] = {"nickname": nickname, "time": time.time()}
         channel["last_activity"] = time.time()
         
-        # Add message to channel
         message = {
             "text": text, 
             "nickname": nickname,
             "userId": user_id,
-            "time": time.time()
+            "time": time.time(),
+            "type": "text"
         }
         
         channel["messages"].append(message)
@@ -581,16 +658,22 @@ def delete_channel():
         
         channel = channels[channel_id]
         
-        # For DM channels, check if user is one of the DM participants
         if channel.get("is_dm", False):
             if user_id not in channel["dm_users"]:
                 return jsonify({"error": "You are not part of this direct message"}), 403
-        
-        # For regular channels, check if user is a member
         elif user_id not in channel["members"]:
             return jsonify({"error": "You are not a member of this channel"}), 403
         
-        # Delete the channel
+        # Delete associated media files
+        for message in channel["messages"]:
+            if message.get("type") == "image" and message.get("file_path"):
+                try:
+                    file_path = os.path.join(app.config['UPLOAD_FOLDER'], message["file_path"])
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+                except Exception as e:
+                    print(f"Error deleting file {message.get('file_path')}: {e}")
+        
         del channels[channel_id]
         save_data()
         
@@ -600,28 +683,7 @@ def delete_channel():
         print(f"Error in delete_channel: {str(e)}")
         return jsonify({"error": "Server error"}), 500
 
-@app.route("/channel_info/<channel_id>")
-def get_channel_info(channel_id):
-    cleanup_messages()
-    
-    if channel_id not in channels:
-        return jsonify({"error": "Channel not found"}), 404
-    
-    channel = channels[channel_id]
-    return jsonify({
-        "id": channel_id,
-        "name": channel["name"],
-        "type": channel["type"],
-        "code": channel.get("code"),
-        "messageLifetime": channel["message_lifetime"],
-        "messageCount": len(channel["messages"]),
-        "lastActivity": channel["last_activity"],
-        "creator": channel["creator"],
-        "is_system": channel.get("is_system", False)
-    })
-
 # ===== ADMIN ENDPOINTS =====
-
 @app.route("/admin/users")
 def get_users():
     cleanup_messages()
@@ -641,7 +703,6 @@ def delete_user():
     
     if user_id in nicknames:
         del nicknames[user_id]
-        # Remove user from all channels
         for channel in channels.values():
             if "members" in channel and user_id in channel["members"]:
                 channel["members"].remove(user_id)
@@ -651,180 +712,6 @@ def delete_user():
         return jsonify({"success": True})
     
     return jsonify({"error": "User not found"}), 404
-
-@app.route("/admin/delete_message", methods=["POST"])
-def delete_message():
-    data = request.get_json()
-    channel_id = data.get("channelId")
-    message_id = data.get("messageId")
-    
-    if channel_id not in channels:
-        return jsonify({"error": "Channel not found"}), 404
-    
-    channel = channels[channel_id]
-    message_found = False
-    
-    for i, message in enumerate(channel["messages"]):
-        if message["id"] == message_id:
-            del channel["messages"][i]
-            message_found = True
-            break
-    
-    if message_found:
-        save_data()
-        return jsonify({"success": True})
-    
-    return jsonify({"error": "Message not found"}), 404
-
-@app.route("/admin/delete_channel", methods=["POST"])
-def delete_channel_admin():
-    data = request.get_json()
-    channel_id = data.get("channelId")
-    
-    if channel_id not in channels:
-        return jsonify({"error": "Channel not found"}), 404
-    
-    # Admin can delete any channel
-    del channels[channel_id]
-    save_data()
-    
-    return jsonify({"success": True})
-
-@app.route("/admin/delete_channel", methods=["POST"])
-def admin_delete_channel():
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "No data provided"}), 400
-            
-        channel_id = data.get("channelId", "").strip()
-        admin_password = data.get("adminPassword", "").strip()
-        
-        if not channel_id or not admin_password:
-            return jsonify({"error": "Channel ID and admin password are required"}), 400
-        
-        if admin_password != "admin123":  # Change this to your desired password
-            return jsonify({"error": "Invalid admin password"}), 403
-        
-        if channel_id == "main":
-            return jsonify({"error": "Cannot delete the main channel"}), 403
-        
-        cleanup_messages()
-        
-        if channel_id not in channels:
-            return jsonify({"error": "Channel not found"}), 404
-        
-        # Delete the channel
-        del channels[channel_id]
-        save_data()
-        
-        return jsonify({"success": True, "message": "Channel deleted successfully"})
-        
-    except Exception as e:
-        print(f"Error in admin_delete_channel: {str(e)}")
-        return jsonify({"error": "Server error"}), 500
-
-@app.route("/admin/clear_channel", methods=["POST"])
-def admin_clear_channel():
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "No data provided"}), 400
-            
-        channel_id = data.get("channelId", "").strip()
-        admin_password = data.get("adminPassword", "").strip()
-        
-        if not channel_id or not admin_password:
-            return jsonify({"error": "Channel ID and admin password are required"}), 400
-        
-        if admin_password != "admin123":  # Change this to your desired password
-            return jsonify({"error": "Invalid admin password"}), 403
-        
-        cleanup_messages()
-        
-        if channel_id not in channels:
-            return jsonify({"error": "Channel not found"}), 404
-        
-        # Clear all messages from the channel
-        channels[channel_id]["messages"] = []
-        save_data()
-        
-        return jsonify({"success": True, "message": "Channel cleared successfully"})
-        
-    except Exception as e:
-        print(f"Error in admin_clear_channel: {str(e)}")
-        return jsonify({"error": "Server error"}), 500
-
-@app.route("/admin/delete_message", methods=["POST"])
-def admin_delete_message():
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "No data provided"}), 400
-            
-        channel_id = data.get("channelId", "").strip()
-        timestamp = data.get("timestamp", "").strip()
-        admin_password = data.get("adminPassword", "").strip()
-        
-        if not channel_id or not timestamp or not admin_password:
-            return jsonify({"error": "Channel ID, timestamp, and admin password are required"}), 400
-        
-        if admin_password != "admin123":  # Change this to your desired password
-            return jsonify({"error": "Invalid admin password"}), 403
-        
-        cleanup_messages()
-        
-        if channel_id not in channels:
-            return jsonify({"error": "Channel not found"}), 404
-        
-        # Find and remove the message
-        channel = channels[channel_id]
-        original_count = len(channel["messages"])
-        channel["messages"] = [m for m in channel["messages"] if m["time"] != float(timestamp)]
-        
-        if len(channel["messages"]) == original_count:
-            return jsonify({"error": "Message not found"}), 404
-        
-        save_data()
-        return jsonify({"success": True, "message": "Message deleted successfully"})
-        
-    except Exception as e:
-        print(f"Error in admin_delete_message: {str(e)}")
-        return jsonify({"error": "Server error"}), 500
-
-@app.route("/admin/ban_user", methods=["POST"])
-def admin_ban_user():
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "No data provided"}), 400
-            
-        user_id = data.get("userId", "").strip()
-        admin_password = data.get("adminPassword", "").strip()
-        
-        if not user_id or not admin_password:
-            return jsonify({"error": "User ID and admin password are required"}), 400
-        
-        if admin_password != "admin123":  # Change this to your desired password
-            return jsonify({"error": "Invalid admin password"}), 403
-        
-        # Remove user from nicknames (effectively banning them)
-        if user_id in nicknames:
-            del nicknames[user_id]
-        
-        # Remove user from all channel members and DM channels
-        for channel in channels.values():
-            if "members" in channel and user_id in channel["members"]:
-                channel["members"].remove(user_id)
-            if "dm_users" in channel and user_id in channel["dm_users"]:
-                channel["dm_users"].remove(user_id)
-        
-        save_data()
-        return jsonify({"success": True, "message": "User banned successfully"})
-        
-    except Exception as e:
-        print(f"Error in admin_ban_user: {str(e)}")
-        return jsonify({"error": "Server error"}), 500
 
 if __name__ == "__main__":
     load_data()
