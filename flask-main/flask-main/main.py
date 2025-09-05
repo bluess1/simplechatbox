@@ -10,7 +10,7 @@ app = Flask(__name__)
 # Configure upload settings
 UPLOAD_FOLDER = 'uploads'
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'pdf', 'txt', 'doc', 'docx', 'mp4', 'mp3', 'wav', 'zip', 'rar'}
 
 # Create uploads directory if it doesn't exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -284,8 +284,8 @@ def get_user():
     return jsonify({"success": False, "user": None})
 
 # --- IMAGE UPLOAD ENDPOINT ---
-@app.route("/upload_image", methods=["POST"])
-def upload_image():
+@app.route("/upload", methods=["POST"])
+def upload_file():
     try:
         if 'file' not in request.files:
             return jsonify({"error": "No file provided"}), 400
@@ -302,7 +302,7 @@ def upload_image():
             return jsonify({"error": "User ID and nickname are required"}), 400
             
         if not allowed_file(file.filename):
-            return jsonify({"error": "File type not allowed. Only PNG, JPG, JPEG, GIF, and WEBP files are supported."}), 400
+            return jsonify({"error": "File type not allowed. Supported formats: Images (PNG, JPG, JPEG, GIF, WEBP), Documents (PDF, TXT, DOC, DOCX), Media (MP4, MP3, WAV), Archives (ZIP, RAR)."}), 400
         
         cleanup_messages()
         
@@ -326,8 +326,28 @@ def upload_image():
         # Save file
         file.save(file_path)
         
-        # Determine if it's a GIF
-        is_gif = filename.lower().endswith('.gif')
+        # Determine file type and properties
+        file_extension = filename.lower().split('.')[-1]
+        is_image = file_extension in {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+        is_video = file_extension in {'mp4'}
+        is_audio = file_extension in {'mp3', 'wav'}
+        is_document = file_extension in {'pdf', 'txt', 'doc', 'docx'}
+        is_archive = file_extension in {'zip', 'rar'}
+        is_gif = file_extension == 'gif'
+        
+        # Determine message type
+        if is_image:
+            message_type = "image"
+        elif is_video:
+            message_type = "video"
+        elif is_audio:
+            message_type = "audio"
+        elif is_document:
+            message_type = "document"
+        elif is_archive:
+            message_type = "archive"
+        else:
+            message_type = "file"
         
         # Update nickname and channel activity
         nicknames[user_id] = {"nickname": nickname, "time": time.time()}
@@ -335,13 +355,15 @@ def upload_image():
         
         # Add message to channel
         message = {
-            "text": "",  # No text for image messages
+            "text": "",  # No text for file messages
             "nickname": nickname,
             "userId": user_id,
             "time": time.time(),
-            "type": "image",
+            "type": message_type,
             "file_path": filename,
             "file_url": f"/uploads/{filename}",
+            "file_name": file.filename,
+            "file_size": file.content_length,
             "is_gif": is_gif
         }
         
