@@ -448,11 +448,14 @@
             box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
         }
 
-        .file-upload-btn svg {
+        .plus-icon {
+            font-size: 18px;
+            font-weight: bold;
+            line-height: 1;
             transition: transform 0.2s ease;
         }
 
-        .file-upload-btn:hover svg {
+        .file-upload-btn:hover .plus-icon {
             transform: rotate(90deg);
         }
 
@@ -1106,9 +1109,7 @@
         <div class="file-upload-container">
             <input type="file" id="fileInput" style="display: none;" onchange="handleFileSelect(event)" accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.txt,.doc,.docx,.mp4,.mp3,.wav,.zip,.rar" />
             <button class="file-upload-btn" onclick="document.getElementById('fileInput').click()" title="Attach file">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 5v14M5 12h14"/>
-                </svg>
+                <span class="plus-icon">+</span>
             </button>
         </div>
     </div>
