@@ -840,11 +840,20 @@
                     <p>Select a channel to start chatting or create your own</p>
                 </div>
             </div>
+
+
+           <div class="chat-input">
+    <input type="text" id="messageInput" placeholder="Type a message..." maxlength="500" />
+
+    <!-- 📎 File Upload -->
+    <input type="file" id="fileInput" style="display: none;" onchange="uploadFile(event)" />
+    <button onclick="document.getElementById('fileInput').click()">📎</button>
+
+    <button id="sendBtn" onclick="sendMessage()">Send</button>
+</div>
+
             
-            <div class="chat-input">
-                <input type="text" id="messageInput" placeholder="Type your message..." disabled />
-                <button id="sendBtn" onclick="sendMessage()" disabled>Send</button>
-            </div>
+          
         </div>
     </div>
 
@@ -1532,12 +1541,20 @@
                         }
                         
                         messageWrapper.innerHTML = `
-                            <div class="nickname">${message.nickname}</div>
-                            <div class="bubble ${message.userId === currentUser.id ? 'self' : 'other'}">
-                                ${message.text}
-                                <div class="timestamp">${formatTime(message.timestamp)}</div>
-                            </div>
-                        `;
+    <div class="nickname">${message.nickname}</div>
+    <div class="bubble ${message.userId === currentUser.id ? 'self' : 'other'}">
+        ${message.file 
+            ? `<a href="${message.file}" target="_blank">
+                   ${message.text}
+                   ${message.file.match(/\.(jpg|jpeg|png|gif)$/i) 
+                        ? `<br><img src="${message.file}" style="max-width: 200px; border-radius: 8px; margin-top: 5px;">` 
+                        : ''}
+               </a>` 
+            : message.text}
+        <div class="timestamp">${formatTime(message.timestamp)}</div>
+    </div>
+`;
+
                         
                         chatMessages.appendChild(messageWrapper);
                     });
@@ -1613,6 +1630,52 @@
                 showError('nicknameError', 'Failed to send message. Please try again.');
             }
         }
+
+
+        async function uploadFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (!currentChannel) {
+        showError('nicknameError', 'Please select a channel first');
+        return;
+    }
+
+    if (!currentUser.nickname) {
+        showError('nicknameError', 'Please set a nickname first');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('userId', currentUser.id);
+    formData.append('nickname', currentUser.nickname);
+    formData.append('channelId', currentChannel);
+
+    try {
+        const response = await fetch('/upload', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await response.json();
+
+        if (data.error) {
+            showError('nicknameError', data.error);
+            return;
+        }
+
+        // Reload messages to display uploaded file
+        loadMessages(currentChannel);
+
+    } catch (error) {
+        console.error('Error uploading file:', error);
+        showError('nicknameError', 'Failed to upload file');
+    }
+
+    // Reset so user can reselect same file
+    event.target.value = '';
+}
+
 
         async function deleteChannel(channelId, event) {
             event.stopPropagation(); // Prevent channel selection
@@ -1719,3 +1782,4 @@
     </script>
 </body>
 </html>
+
