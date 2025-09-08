@@ -1066,6 +1066,7 @@
                     <div class="chat-meta" id="chatMeta">Choose a channel from the sidebar to start chatting</div>
                 </div>
                 <div class="theme-selector">
+                    <button class="theme-btn" id="muteToggleBtn" title="Toggle notifications" onclick="toggleGlobalMute()">🔕 Unmute</button>
                     <button class="theme-btn" onclick="setTheme('light')">☀️ Light</button>
                     <button class="theme-btn" onclick="setTheme('dark')">🌙 Dark</button>
                     <button class="theme-btn" onclick="setTheme('blue')">💙 Blue</button>
@@ -1121,6 +1122,8 @@
         </div>
     </div>
 
+    <div id="topBanner" style="display:none; position: fixed; top: 20px; right: 20px; background: var(--accent-primary); color: #fff; padding: 10px 16px; border-radius: 8px; box-shadow: var(--shadow-lg); z-index: 10000; font-size: 14px;"></div>
+
     <script>
         let currentUser = {
             id: localStorage.getItem('chat-user-id') || Math.random().toString(36).substr(2, 9),
@@ -1130,6 +1133,7 @@
         let messageInterval = null;
         let lastMessageCount = 0;
         let allChannels = []; // Store all channels for search functionality
+        let notificationsMuted = (localStorage.getItem('notifications-muted') === null) ? true : (localStorage.getItem('notifications-muted') === 'true');
 
         // Initialize app
         document.addEventListener('DOMContentLoaded', function() {
@@ -1192,6 +1196,14 @@
                 const length = e.target.value.length;
                 counter.textContent = `${length}/25 characters`;
                 counter.className = length > 20 ? 'char-counter warning' : 'char-counter';
+            });
+            
+            updateMuteButton();
+            
+            document.addEventListener('visibilitychange', function() {
+                if (document.hidden && notificationsMuted) {
+                    showBanner('Notifications are muted. Click "Unmute" to enable.');
+                }
             });
         });
 
@@ -1567,6 +1579,11 @@
 
                 // Also load DM channels
                 loadDmChannels();
+                
+                if (!localStorage.getItem('auto-muted-v1')) {
+                    await autoMuteAllChannels();
+                    localStorage.setItem('auto-muted-v1', 'true');
+                }
 
             } catch (error) {
                 console.error('Error loading channels:', error);
@@ -1823,6 +1840,14 @@
                     
                     // Scroll to bottom
                     chatMessages.scrollTop = chatMessages.scrollHeight;
+                    
+                    if (messages.length > 0) {
+                        const last = messages[messages.length - 1];
+                        const isFromOther = last.userId !== currentUser.id;
+                        if (isFromOther && document.hidden && !notificationsMuted) {
+                            triggerWebNotification(last.nickname, (last.text && last.text.trim()) ? last.text : 'New message');
+                        }
+                    }
                 }
 
             } catch (error) {
@@ -1941,6 +1966,95 @@
             
             // Regular text message
             return message.text || '';
+        }
+
+        // --- Notification helpers ---
+        function updateMuteButton() {
+            const btn = document.getElementById('muteToggleBtn');
+            if (!btn) return;
+            if (notificationsMuted) {
+                btn.textContent = '🔕 Unmute';
+                btn.title = 'Enable notifications';
+            } else {
+                btn.textContent = '🔔 Mute';
+                btn.title = 'Mute notifications';
+            }
+        }
+
+        async function autoMuteAllChannels() {
+            try {
+                for (const ch of allChannels) {
+                    await fetch('/notification_settings', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId: currentUser.id, channelId: ch.id, enabled: false })
+                    });
+                }
+            } catch (e) {
+                console.warn('Auto-mute failed:', e);
+            }
+        }
+
+        async function setAllChannelsNotification(enabled) {
+            try {
+                for (const ch of allChannels) {
+                    await fetch('/notification_settings', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId: currentUser.id, channelId: ch.id, enabled: enabled })
+                    });
+                }
+            } catch (e) {
+                console.warn('Set notifications failed:', e);
+            }
+        }
+
+        async function toggleGlobalMute() {
+            notificationsMuted = !notificationsMuted;
+            localStorage.setItem('notifications-muted', notificationsMuted ? 'true' : 'false');
+            updateMuteButton();
+
+            if (!notificationsMuted) {
+                try {
+                    if ('Notification' in window) {
+                        if (Notification.permission === 'default') {
+                            await Notification.requestPermission();
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Notification permission request failed:', e);
+                }
+                await setAllChannelsNotification(true);
+                showBanner('Notifications enabled');
+            } else {
+                await setAllChannelsNotification(false);
+                showBanner('Notifications muted');
+            }
+        }
+
+        function showBanner(message) {
+            const el = document.getElementById('topBanner');
+            if (!el) return;
+            el.textContent = message;
+            el.style.display = 'block';
+            clearTimeout(window.__bannerTimer);
+            window.__bannerTimer = setTimeout(() => {
+                el.style.display = 'none';
+            }, 2500);
+        }
+
+        function triggerWebNotification(title, body) {
+            try {
+                if (!('Notification' in window)) return;
+                if (Notification.permission !== 'granted') return;
+                const n = new Notification(title || 'New message', {
+                    body: body || 'You have a new message',
+                    icon: undefined
+                });
+                setTimeout(() => n.close && n.close(), 4000);
+            } catch (e) {
+                // ignore
+            }
         }
 
         function getFileTypeIcon(type) {
