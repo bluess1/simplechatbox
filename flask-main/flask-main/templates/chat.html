@@ -1054,6 +1054,9 @@
                     <button class="action-btn" onclick="openModal('createDmModal')" style="background: var(--accent-primary);">
                         💬 Direct Message
                     </button>
+                    <button class="action-btn" onclick="openCallPage()">
+                        📹 Start Call
+                    </button>
                 </div>
             </div>
         </div>
@@ -1312,6 +1315,11 @@
         // Mobile sidebar toggle
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('open');
+        }
+
+        function openCallPage() {
+            const room = Math.random().toString(36).substring(2, 8);
+            window.open('/call?room=' + encodeURIComponent(room), '_blank');
         }
 
         // Nickname functions

@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Call</title>
+    <style>
+        body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 0; background:#0b0f14; color:#e6edf3; }
+        header { padding: 12px 16px; display:flex; align-items:center; justify-content:space-between; background:#111827; border-bottom: 1px solid #1f2937; }
+        .brand { font-weight:700; }
+        .container { padding:16px; display:flex; gap:16px; flex-wrap:wrap; }
+        video { background:#000; width: 100%; max-width: 640px; aspect-ratio:16/9; border-radius:8px; border:1px solid #1f2937; }
+        .controls { display:flex; gap:8px; margin-top:12px; }
+        button { background:#374151; color:#e6edf3; border:1px solid #4b5563; padding:10px 14px; border-radius:8px; cursor:pointer; }
+        button:hover { background:#4b5563; }
+        .row { display:flex; flex-direction:column; }
+        .status { font-size:12px; color:#9ca3af; margin-top:6px; }
+        .grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; width:100%; }
+        .field { display:flex; gap:8px; align-items:center; }
+        input { background:#0b0f14; color:#e6edf3; border:1px solid #253041; border-radius:8px; padding:10px 12px; width: 260px; }
+        .warning { color:#f59e0b; font-size:12px; margin-top:8px; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="brand">Call Room</div>
+        <div class="field">
+            <input id="roomId" placeholder="Room ID" value="{{ room or '' }}"/>
+            <button id="createRoom">Create</button>
+            <button id="joinRoom">Join</button>
+            <button id="leaveRoom">Leave</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="row">
+            <div class="grid">
+                <div>
+                    <div>Local</div>
+                    <video id="localVideo" autoplay playsinline muted></video>
+                </div>
+                <div>
+                    <div>Remote</div>
+                    <video id="remoteVideo" autoplay playsinline></video>
+                </div>
+            </div>
+            <div class="controls">
+                <button id="toggleMic">Toggle Mic</button>
+                <button id="toggleCam">Toggle Cam</button>
+            </div>
+            <div class="status" id="status">Idle</div>
+            <div class="warning">Peer-to-peer via WebRTC. For NAT traversal, this demo uses browser default STUN. Add TURN for reliability.</div>
+        </div>
+    </div>
+
+    <script>
+        const statusEl = document.getElementById('status');
+        function setStatus(t){ statusEl.textContent = t }
+
+        const roomInput = document.getElementById('roomId');
+        const createBtn = document.getElementById('createRoom');
+        const joinBtn = document.getElementById('joinRoom');
+        const leaveBtn = document.getElementById('leaveRoom');
+        const localVideo = document.getElementById('localVideo');
+        const remoteVideo = document.getElementById('remoteVideo');
+        const toggleMicBtn = document.getElementById('toggleMic');
+        const toggleCamBtn = document.getElementById('toggleCam');
+
+        let userId = null;
+        let roomId = roomInput.value.trim();
+        let pc = null;
+        let localStream = null;
+        let pollTimer = null;
+        const ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
+
+        async function postJSON(url, data){
+            const res = await fetch(url, { method:'POST', headers:{ 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+            if(!res.ok){ throw new Error('Request failed') }
+            return res.json();
+        }
+
+        async function getJSON(url){
+            const res = await fetch(url, { method:'GET' });
+            if(!res.ok){ throw new Error('Request failed') }
+            return res.json();
+        }
+
+        function createPeer(){
+            if(pc){ pc.close(); pc = null; }
+            pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+            pc.onicecandidate = async (e) => {
+                if(e.candidate){
+                    const role = pc.currentLocalDescription && pc.currentLocalDescription.type === 'offer' ? 'offer' : 'answer';
+                    try {
+                        await postJSON('/webrtc/candidate', { roomId, role, candidate: e.candidate });
+                    } catch(err) { console.error(err); }
+                }
+            };
+            pc.ontrack = (e) => {
+                if(remoteVideo.srcObject !== e.streams[0]){
+                    remoteVideo.srcObject = e.streams[0];
+                }
+            };
+            if(localStream){
+                localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+            }
+            return pc;
+        }
+
+        async function ensureMedia(){
+            if(localStream) return localStream;
+            localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+            localVideo.srcObject = localStream;
+            return localStream;
+        }
+
+        async function createRoom(){
+            const data = await postJSON('/webrtc/create_room', { roomId: roomInput.value.trim() || undefined });
+            roomId = data.roomId; roomInput.value = roomId;
+            setStatus('Room created: ' + roomId);
+        }
+
+        async function joinRoom(){
+            roomId = roomInput.value.trim();
+            if(!roomId){ alert('Enter room ID'); return }
+            await ensureMedia();
+            const join = await postJSON('/webrtc/join', { roomId });
+            userId = join.userId;
+            createPeer();
+            if(!join.hasOffer){
+                // Caller
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+                await postJSON('/webrtc/offer', { roomId, sdp: offer });
+                setStatus('Waiting for answer...');
+            } else {
+                // Callee
+                const state = await getJSON('/webrtc/state?roomId=' + encodeURIComponent(roomId));
+                if(state.offer){
+                    await pc.setRemoteDescription(state.offer);
+                    const answer = await pc.createAnswer();
+                    await pc.setLocalDescription(answer);
+                    await postJSON('/webrtc/answer', { roomId, sdp: answer });
+                }
+                if(state.candidates && state.candidates.offer){
+                    for(const c of state.candidates.offer){
+                        try { await pc.addIceCandidate(c); } catch(err){ console.error(err); }
+                    }
+                }
+                setStatus('Connected or awaiting ICE...');
+            }
+            startPolling();
+        }
+
+        function startPolling(){
+            stopPolling();
+            pollTimer = setInterval(async () => {
+                try {
+                    const state = await getJSON('/webrtc/state?roomId=' + encodeURIComponent(roomId));
+                    if(state.answer && pc && !pc.currentRemoteDescription && pc.currentLocalDescription && pc.currentLocalDescription.type === 'offer'){
+                        await pc.setRemoteDescription(state.answer);
+                        setStatus('Answer received. Establishing connection...');
+                    }
+                    const role = pc && pc.currentLocalDescription ? pc.currentLocalDescription.type : null;
+                    if(state.candidates){
+                        const incoming = role === 'offer' ? state.candidates.answer : state.candidates.offer;
+                        if(incoming){
+                            for(const c of incoming){
+                                try { await pc.addIceCandidate(c); } catch(err){ console.error(err); }
+                            }
+                        }
+                    }
+                } catch(err){ console.error(err); }
+            }, 1500);
+        }
+
+        function stopPolling(){ if(pollTimer){ clearInterval(pollTimer); pollTimer = null; } }
+
+        async function leaveRoom(){
+            stopPolling();
+            try { if(roomId && userId){ await postJSON('/webrtc/leave', { roomId, userId }); } } catch {}
+            if(pc){ pc.getSenders().forEach(s=>{ try{ s.track && s.track.stop(); }catch{} }); pc.close(); pc=null; }
+            if(localStream){ localStream.getTracks().forEach(t=>t.stop()); localStream=null; }
+            localVideo.srcObject = null; remoteVideo.srcObject = null;
+            setStatus('Left room');
+        }
+
+        toggleMicBtn.onclick = () => {
+            if(!localStream) return;
+            localStream.getAudioTracks().forEach(t => t.enabled = !t.enabled);
+        };
+        toggleCamBtn.onclick = () => {
+            if(!localStream) return;
+            localStream.getVideoTracks().forEach(t => t.enabled = !t.enabled);
+        };
+
+        createBtn.onclick = createRoom;
+        joinBtn.onclick = joinRoom;
+        leaveBtn.onclick = leaveRoom;
+
+        window.addEventListener('beforeunload', leaveRoom);
+    </script>
+</body>
+</html>
+

@@ -36,6 +36,21 @@ channels = {
 }
 nicknames = {}
 notification_settings = {}
+webrtc_rooms = {}
+
+def get_or_create_room(room_id):
+    if room_id not in webrtc_rooms:
+        webrtc_rooms[room_id] = {
+            "participants": set(),
+            "offer": None,
+            "answer": None,
+            "candidates": {
+                "offer": [],
+                "answer": []
+            },
+            "updated_at": time.time()
+        }
+    return webrtc_rooms[room_id]
 
 def normalize(text):
     if not text:
@@ -197,6 +212,16 @@ def load_data():
     except Exception as e:
         print(f"Error loading data: {e}")
 
+def prune_webrtc_rooms():
+    now = time.time()
+    stale_ids = []
+    for rid, room in webrtc_rooms.items():
+        # expire after 1 hour of inactivity
+        if now - room.get("updated_at", now) > 3600 or len(room.get("participants", [])) == 0 and now - room.get("updated_at", now) > 300:
+            stale_ids.append(rid)
+    for rid in stale_ids:
+        del webrtc_rooms[rid]
+
 # --- NOTIFICATION SETTINGS API ENDPOINTS ---
 @app.route("/notification_settings", methods=["GET"])
 def get_notification_settings():
@@ -233,6 +258,106 @@ def index():
 @app.route("/admin")
 def admin():
     return render_template("admin.html")
+
+@app.route("/call")
+def call_home():
+    room = request.args.get("room", "")
+    return render_template("call.html", room=room)
+
+# --- WebRTC signaling endpoints ---
+@app.route("/webrtc/create_room", methods=["POST"])
+def webrtc_create_room():
+    data = request.get_json(silent=True) or {}
+    requested_room = data.get("roomId")
+    room_id = requested_room or generate_id()
+    room = get_or_create_room(room_id)
+    room["updated_at"] = time.time()
+    return jsonify({"success": True, "roomId": room_id})
+
+@app.route("/webrtc/join", methods=["POST"])
+def webrtc_join():
+    data = request.get_json(silent=True) or {}
+    room_id = data.get("roomId")
+    user_id = data.get("userId") or generate_id()
+    if not room_id:
+        return jsonify({"error": "roomId required"}), 400
+    room = get_or_create_room(room_id)
+    prune_webrtc_rooms()
+    room["participants"].add(user_id)
+    room["updated_at"] = time.time()
+    return jsonify({
+        "success": True,
+        "roomId": room_id,
+        "userId": user_id,
+        "hasOffer": room["offer"] is not None,
+        "hasAnswer": room["answer"] is not None
+    })
+
+@app.route("/webrtc/leave", methods=["POST"])
+def webrtc_leave():
+    data = request.get_json(silent=True) or {}
+    room_id = data.get("roomId")
+    user_id = data.get("userId")
+    if not room_id or not user_id:
+        return jsonify({"error": "roomId and userId required"}), 400
+    room = get_or_create_room(room_id)
+    if user_id in room["participants"]:
+        room["participants"].remove(user_id)
+    room["updated_at"] = time.time()
+    return jsonify({"success": True})
+
+@app.route("/webrtc/offer", methods=["POST"])
+def webrtc_offer():
+    data = request.get_json(silent=True) or {}
+    room_id = data.get("roomId")
+    sdp = data.get("sdp")
+    if not room_id or not sdp:
+        return jsonify({"error": "roomId and sdp required"}), 400
+    room = get_or_create_room(room_id)
+    room["offer"] = sdp
+    room["updated_at"] = time.time()
+    return jsonify({"success": True})
+
+@app.route("/webrtc/answer", methods=["POST"])
+def webrtc_answer():
+    data = request.get_json(silent=True) or {}
+    room_id = data.get("roomId")
+    sdp = data.get("sdp")
+    if not room_id or not sdp:
+        return jsonify({"error": "roomId and sdp required"}), 400
+    room = get_or_create_room(room_id)
+    room["answer"] = sdp
+    room["updated_at"] = time.time()
+    return jsonify({"success": True})
+
+@app.route("/webrtc/candidate", methods=["POST"])
+def webrtc_candidate():
+    data = request.get_json(silent=True) or {}
+    room_id = data.get("roomId")
+    candidate = data.get("candidate")
+    role = data.get("role")  # 'offer' or 'answer'
+    if not room_id or not candidate or role not in ("offer", "answer"):
+        return jsonify({"error": "roomId, candidate and role required"}), 400
+    room = get_or_create_room(room_id)
+    room["candidates"][role].append(candidate)
+    room["updated_at"] = time.time()
+    return jsonify({"success": True})
+
+@app.route("/webrtc/state", methods=["GET"])
+def webrtc_state():
+    room_id = request.args.get("roomId")
+    if not room_id:
+        return jsonify({"error": "roomId required"}), 400
+    room = get_or_create_room(room_id)
+    response = {
+        "offer": room["offer"],
+        "answer": room["answer"],
+        "candidates": room["candidates"]
+    }
+    # Clear candidates after fetch to avoid duplication
+    room["candidates"] = {"offer": [], "answer": []}
+    room["updated_at"] = time.time()
+    return jsonify(response)
 
 @app.route("/set_nickname", methods=["POST"])
 def set_nickname():
